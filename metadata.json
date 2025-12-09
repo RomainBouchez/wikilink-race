@@ -1,0 +1,5 @@
+{
+  "name": "WikiLink Race",
+  "description": "A competitive intellectual game where players navigate from a random Wikipedia start page to a target page using only internal hyperlinks.",
+  "requestFramePermissions": []
+}
