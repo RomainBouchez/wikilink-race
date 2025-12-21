@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LeaderboardEntry, GameMode, User as UserType } from '../types';
 import { leaderboardService } from '../services/leaderboardService';
-import { Trophy, Clock, MousePointerClick, Calendar, User, Download, Upload, Trash2, Dumbbell } from 'lucide-react';
+import { Trophy, Clock, MousePointerClick, Calendar, User, Dumbbell } from 'lucide-react';
 import { Button } from './Button';
 
 interface LeaderboardProps {
@@ -49,52 +49,15 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntr
     }
   };
 
-  const handleExport = () => {
-    const data = leaderboardService.exportData();
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `wikilink-race-leaderboard-${Date.now()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      if (leaderboardService.importData(content)) {
-        loadEntries();
-        alert('Leaderboard imported successfully!');
-      } else {
-        alert('Failed to import leaderboard. Invalid file format.');
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleClear = () => {
-    if (confirm('Are you sure you want to clear all leaderboard data? This cannot be undone.')) {
-      leaderboardService.clearLeaderboard();
-      loadEntries();
-    }
-  };
-
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
   const getUniqueRoutes = () => {
-    const mode = selectedMode === 'all' ? undefined : selectedMode;
-    const allEntries = leaderboardService.getAllEntries(mode);
     const routes = new Map<string, { start: string; target: string; count: number }>();
 
-    allEntries.forEach(entry => {
+    entries.forEach(entry => {
       const key = `${entry.startPage}|${entry.targetPage}`;
       if (routes.has(key)) {
         routes.get(key)!.count++;
@@ -184,59 +147,25 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntr
             </Button>
           </div>
 
-          {/* View Mode and Actions */}
-          <div className="flex flex-wrap gap-2 items-center justify-between">
-            <div className="flex gap-2">
-              <Button
-                variant={viewMode === 'all' ? 'primary' : 'secondary'}
-                onClick={() => {
-                  setViewMode('all');
-                  setSelectedRoute(null);
-                }}
-                className="text-sm py-2"
-              >
-                All Scores
-              </Button>
-              <Button
-                variant={viewMode === 'route' ? 'primary' : 'secondary'}
-                onClick={() => setViewMode('route')}
-                className="text-sm py-2"
-              >
-                By Route
-              </Button>
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={handleExport}
-                className="text-sm py-2 flex items-center"
-              >
-                <Download className="w-4 h-4 mr-1" /> Export
-              </Button>
-              <label className="cursor-pointer">
-                <Button
-                  variant="secondary"
-                  className="text-sm py-2 flex items-center"
-                  as="span"
-                >
-                  <Upload className="w-4 h-4 mr-1" /> Import
-                </Button>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleImport}
-                  className="hidden"
-                />
-              </label>
-              <Button
-                variant="secondary"
-                onClick={handleClear}
-                className="text-sm py-2 flex items-center text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4 mr-1" /> Clear
-              </Button>
-            </div>
+          {/* View Mode */}
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'all' ? 'primary' : 'secondary'}
+              onClick={() => {
+                setViewMode('all');
+                setSelectedRoute(null);
+              }}
+              className="text-sm py-2"
+            >
+              All Scores
+            </Button>
+            <Button
+              variant={viewMode === 'route' ? 'primary' : 'secondary'}
+              onClick={() => setViewMode('route')}
+              className="text-sm py-2"
+            >
+              By Route
+            </Button>
           </div>
         </div>
 

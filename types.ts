@@ -65,6 +65,17 @@ export interface DailyChallenge {
   targetPageData?: WikiPageSummary;
 }
 
+export interface DailyProgressState {
+  dailyChallengeId: string;      // YYYY-MM-DD format
+  userId?: string;                // For authenticated users
+  currentPageTitle: string;
+  history: string[];
+  clicks: number;
+  startTime: number;
+  lastSaved: number;
+  completed: boolean;
+}
+
 // User authentication types
 export interface User {
   uid: string;

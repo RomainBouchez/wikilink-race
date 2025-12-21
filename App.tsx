@@ -3,6 +3,7 @@ import { GameStatus, GameState, WikiPageSummary, GameMode, User } from './types'
 import { fetchRandomPage, fetchPageSummary, fetchHybridPage } from './services/wikiService';
 import { leaderboardService } from './services/leaderboardService';
 import { dailyChallengeService } from './services/dailyChallengeService';
+import { dailyProgressService } from './services/dailyProgressService';
 import { onAuthStateChanged, mapFirebaseUser } from './services/authService';
 import { createOrUpdateUserProfile } from './services/firestoreService';
 import { hasLocalData } from './services/migrationService';
@@ -14,8 +15,7 @@ import { ModeSelection } from './components/ModeSelection';
 import { AuthButton } from './components/AuthButton';
 import { AuthModal } from './components/AuthModal';
 import { MigrationPrompt } from './components/MigrationPrompt';
-import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search } from 'lucide-react';
-
+import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search, Map, ChevronRight, Home } from 'lucide-react';
 const INITIAL_STATE: GameState = {
   status: GameStatus.IDLE,
   mode: null,
@@ -72,6 +72,79 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // Restore daily progress on mount
+  useEffect(() => {
+    async function restoreProgress() {
+      if (gameState.status !== GameStatus.IDLE || authLoading) return;
+
+      const todayId = dailyChallengeService.getTodayId();
+
+      // Check if already completed
+      if (dailyChallengeService.hasCompletedToday()) {
+        await dailyProgressService.clearProgress(todayId, user);
+        return;
+      }
+
+      // Load saved progress
+      const progress = await dailyProgressService.loadProgress(todayId, user);
+      if (!progress) return;
+
+      // Verify it's for today
+      if (progress.dailyChallengeId !== todayId) {
+        await dailyProgressService.clearProgress(progress.dailyChallengeId, user);
+        return;
+      }
+
+      try {
+        // Get today's challenge
+        const challenge = await dailyChallengeService.getTodayChallenge();
+
+        // Fetch current page
+        const currentPage = await fetchPageSummary(progress.currentPageTitle);
+
+        // Restore state
+        setGameState({
+          status: GameStatus.PLAYING,
+          mode: GameMode.DAILY,
+          startPage: challenge.startPageData || await fetchPageSummary(challenge.startPage),
+          targetPage: challenge.targetPageData || await fetchPageSummary(challenge.targetPage),
+          currentPage: currentPage,
+          history: progress.history,
+          clicks: progress.clicks,
+          startTime: progress.startTime,
+          endTime: null,
+          error: null,
+          dailyChallengeId: todayId,
+        });
+      } catch (error) {
+        console.error('[DailyProgress] Failed to restore progress:', error);
+        // Clear invalid progress
+        await dailyProgressService.clearProgress(todayId, user);
+      }
+    }
+
+    if (!authLoading) {
+      restoreProgress();
+    }
+  }, [authLoading, user]);
+
+  // Auto-save daily progress on every click
+  useEffect(() => {
+    if (
+      gameState.mode === GameMode.DAILY &&
+      gameState.status === GameStatus.PLAYING &&
+      gameState.dailyChallengeId &&
+      gameState.currentPage
+    ) {
+      dailyProgressService.saveProgress(gameState, user);
+    }
+  }, [gameState.clicks, gameState.currentPage?.title, user]);
+
+  // Return to home screen
+  const goHome = useCallback(() => {
+    setGameState(INITIAL_STATE);
+  }, []);
+
   const initGame = async (mode: GameMode) => {
     setGameState(prev => ({ ...prev, status: GameStatus.LOADING, error: null, mode }));
 
@@ -84,6 +157,9 @@ function App() {
         // Get today's daily challenge
         const dailyChallenge = await dailyChallengeService.getTodayChallenge();
         dailyChallengeId = dailyChallenge.id;
+
+        // Clear any existing progress (starting fresh)
+        await dailyProgressService.clearProgress(dailyChallengeId, user);
 
         // Use the challenge's pages
         if (dailyChallenge.startPageData && dailyChallenge.targetPageData) {
@@ -311,6 +387,13 @@ function App() {
   if (gameState.status === GameStatus.LOADING) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <button
+          onClick={goHome}
+          className="fixed top-4 right-4 bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg border border-gray-300 transition-colors flex items-center gap-2 shadow-sm"
+        >
+          <Home className="w-4 h-4" />
+          Home
+        </button>
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
         <h2 className="text-xl font-semibold text-gray-700">Setting up the race course...</h2>
         <p className="text-gray-500 mt-2">Selecting random articles</p>
@@ -350,9 +433,10 @@ function App() {
             dailyChallengeId: gameState.dailyChallengeId,
           });
 
-          // Mark daily challenge as completed
-          if (gameState.mode === GameMode.DAILY) {
+          // Mark daily challenge as completed and clear progress
+          if (gameState.mode === GameMode.DAILY && gameState.dailyChallengeId) {
             dailyChallengeService.markTodayCompleted();
+            await dailyProgressService.clearProgress(gameState.dailyChallengeId, user);
           }
 
           setLastSavedEntryId(entry.id);
@@ -419,11 +503,14 @@ function App() {
                           <Button variant="secondary" onClick={() => setShowLeaderboard(true)} className="flex items-center justify-center">
                               View Leaderboard
                           </Button>
-                          <Button variant="secondary" onClick={() => window.open(`https://twitter.com/intent/tweet?text=I%20reached%20${gameState.targetPage?.title}%20from%20${gameState.startPage?.title}%20in%20${gameState.clicks}%20clicks!%20#WikiLinkRace`, '_blank')}>
+                          <Button variant="secondary" onClick={() => window.open(`https://twitter.com/intent/tweet?text=I%20reached%20${gameState.targetPage?.title}%20from%20${gameState.startPage?.title}%20in%20${gameState.clicks}%20clicks!%20#WikiLinkRaceyoooo`, '_blank')}>
                               Share Result
                           </Button>
                           <Button onClick={() => initGame(gameState.mode!)} className="flex items-center justify-center">
                               <RotateCcw className="w-4 h-4 mr-2" /> Play Again
+                          </Button>
+                          <Button variant="secondary" onClick={goHome} className="flex items-center justify-center">
+                              <Home className="w-4 h-4 mr-2" /> Home
                           </Button>
                       </div>
                   </div>
@@ -440,45 +527,105 @@ function App() {
       );
   }
 
+  // Dans App.tsx, remplace le bloc de rendu "Playing" (à la fin du fichier) :
+
   // View: Playing
+  // Dans App.tsx, remplacez le bloc "Playing" :
+
   return (
     <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-gray-100">
-      {/* Main Content Area (The Wiki) */}
-      <main className="flex-1 flex flex-col h-[60vh] lg:h-full relative z-10 order-2 lg:order-1">
-        <header className="bg-white border-b border-gray-200 p-3 flex justify-between items-center lg:hidden shadow-sm">
-             <div className="flex flex-col">
-                 <span className="text-xs text-gray-500">Target</span>
-                 <span className="font-bold text-sm truncate w-40">{gameState.targetPage?.title}</span>
-             </div>
-             <div className="text-xs bg-gray-100 px-2 py-1 rounded">
-                 Clicks: {gameState.clicks}
-             </div>
+      <main className="flex-1 flex flex-col h-full relative z-10 order-2 lg:order-1 overflow-hidden">
+        {/* Mobile Header: Avec description et bouton propre */}
+        <header className="bg-white border-b border-gray-200 p-3 flex justify-between items-center lg:hidden shadow-sm shrink-0">
+          <button
+            onClick={goHome}
+            className="bg-gray-100 p-2 rounded-lg text-gray-700 hover:bg-gray-200 active:scale-95 transition-all mr-2"
+            title="Retour à l'accueil"
+          >
+            <Home className="w-5 h-5" />
+          </button>
+
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] uppercase font-bold text-blue-600 tracking-wider">Cible</span>
+            </div>
+            <span className="font-bold text-sm truncate leading-tight">
+              {gameState.targetPage?.title}
+            </span>
+            {/* Description ultra-légère : une seule ligne discrète */}
+            {gameState.targetPage?.description && (
+              <span className="text-[10px] text-gray-400 truncate block italic">
+                {gameState.targetPage.description}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 ml-2">
+            <div className="text-right">
+              <div className="text-[9px] text-gray-400 uppercase font-bold">Clics</div>
+              <div className="font-mono text-sm font-bold text-gray-800">{gameState.clicks}</div>
+            </div>
+            <button
+              onClick={() => {
+                document.getElementById('mobile-sidebar')?.classList.remove('translate-x-full');
+                document.getElementById('sidebar-overlay')?.classList.remove('hidden');
+              }}
+              className="bg-blue-600 p-2 rounded-lg text-white shadow-md active:scale-95 transition-transform"
+            >
+              <Map className="w-5 h-5" />
+            </button>
+          </div>
         </header>
         
         <div className="flex-1 overflow-hidden relative">
-            {gameState.currentPage && (
-                <WikiViewer 
-                    title={gameState.currentPage.title} 
-                    onNavigate={handleNavigate} 
-                />
-            )}
+          {gameState.currentPage && (
+            <WikiViewer 
+              title={gameState.currentPage.title} 
+              onNavigate={handleNavigate} 
+            />
+          )}
         </div>
       </main>
 
-      {/* Sidebar (Controls & Stats) */}
-      <aside className="order-1 lg:order-2 h-[40vh] lg:h-auto shadow-xl z-20">
-         {gameState.targetPage && gameState.startPage && (
-            <GameSidebar
-                targetPage={gameState.targetPage}
-                startPage={gameState.startPage}
-                history={gameState.history}
-                clicks={gameState.clicks}
-                startTime={gameState.startTime}
-                isPlaying={gameState.status === GameStatus.PLAYING}
-                onNavigateToHistoryPage={handleNavigateToHistoryPage}
-            />
-         )}
+      {/* Sidebar / Drawer */}
+      <aside 
+        id="mobile-sidebar"
+        className="fixed inset-y-0 right-0 w-[85%] sm:w-80 bg-white z-50 shadow-2xl transform translate-x-full transition-transform duration-300 lg:relative lg:translate-x-0 lg:flex lg:flex-col lg:h-full lg:w-80 shrink-0"
+      >
+        {/* Header de fermeture dédié à l'intérieur de la sidebar (Mobile seulement) */}
+        <div className="lg:hidden flex items-center justify-between p-4 border-b bg-gray-50">
+            <span className="font-bold text-gray-700">Votre progression</span>
+            <button 
+                onClick={() => document.getElementById('mobile-sidebar')?.classList.add('translate-x-full')}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+            >
+                <ChevronRight className="w-6 h-6 text-gray-600" />
+            </button>
+        </div>
+
+        {gameState.targetPage && gameState.startPage && (
+          <GameSidebar
+            targetPage={gameState.targetPage}
+            startPage={gameState.startPage}
+            history={gameState.history}
+            clicks={gameState.clicks}
+            startTime={gameState.startTime}
+            isPlaying={gameState.status === GameStatus.PLAYING}
+            onNavigateToHistoryPage={handleNavigateToHistoryPage}
+            onGoHome={goHome}
+          />
+        )}
       </aside>
+      
+      {/* Overlay pour fermer en cliquant à côté (Optionnel mais recommandé) */}
+      <div 
+        id="sidebar-overlay"
+        className="fixed inset-0 bg-black/20 z-40 lg:hidden hidden"
+        onClick={() => {
+            document.getElementById('mobile-sidebar')?.classList.add('translate-x-full');
+            document.getElementById('sidebar-overlay')?.classList.add('hidden');
+        }}
+      />
     </div>
   );
 }

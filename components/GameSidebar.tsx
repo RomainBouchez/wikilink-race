@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { WikiPageSummary } from '../types';
-import { Flag, MousePointer2, Clock, Map, ChevronRight } from 'lucide-react';
+import { Flag, MousePointer2, Clock, Map, ChevronRight, Home } from 'lucide-react';
 
 interface GameSidebarProps {
   targetPage: WikiPageSummary;
@@ -10,6 +10,7 @@ interface GameSidebarProps {
   startTime: number | null;
   isPlaying: boolean;
   onNavigateToHistoryPage?: (title: string, index: number) => void;
+  onGoHome?: () => void;
 }
 
 export const GameSidebar: React.FC<GameSidebarProps> = ({
@@ -20,6 +21,7 @@ export const GameSidebar: React.FC<GameSidebarProps> = ({
   startTime,
   isPlaying,
   onNavigateToHistoryPage,
+  onGoHome,
 }) => {
   const [elapsed, setElapsed] = useState(0);
 
@@ -40,19 +42,19 @@ export const GameSidebar: React.FC<GameSidebarProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 border-l border-gray-200 w-full lg:w-80 flex-shrink-0">
-      {/* Target Header */}
+    <div className="flex flex-col h-full bg-white lg:bg-slate-50 border-l border-gray-200 w-full flex-shrink-0">
+      {/* Target Header Restauré avec Description */}
       <div className="p-4 bg-white border-b border-gray-200 shadow-sm">
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-          Target Article
+        <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
+          Objectif Final
         </div>
         <div className="flex items-start space-x-3">
-            <div className="flex-1">
-                 <h2 className="text-lg font-bold text-blue-800 leading-tight">
+            <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold text-blue-900 leading-tight">
                     {targetPage.title}
                 </h2>
                 {targetPage.description && (
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                    <p className="text-xs text-gray-600 mt-1 line-clamp-3 leading-snug italic">
                         {targetPage.description}
                     </p>
                 )}
@@ -61,39 +63,29 @@ export const GameSidebar: React.FC<GameSidebarProps> = ({
                 <img 
                     src={targetPage.thumbnail.source} 
                     alt="Target" 
-                    className="w-12 h-12 rounded object-cover border border-gray-200"
+                    className="w-14 h-14 rounded-lg object-cover border border-gray-100 shadow-sm shrink-0"
                 />
             )}
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-px bg-gray-200">
-        <div className="bg-white p-4 flex flex-col items-center justify-center">
-            <div className="flex items-center text-gray-500 mb-1">
-                <MousePointer2 className="w-4 h-4 mr-1" />
-                <span className="text-xs uppercase font-bold">Clicks</span>
-            </div>
-            <span className="text-2xl font-mono font-semibold text-gray-800">
-                {clicks}
-            </span>
+      {/* Stats - Horizontal sur mobile dans la sidebar */}
+      <div className="flex border-b border-gray-100 bg-gray-50/50">
+        <div className="flex-1 p-3 text-center border-r border-gray-100">
+          <div className="text-[10px] uppercase font-bold text-gray-400">Clics</div>
+          <div className="text-xl font-mono font-bold text-blue-600">{clicks}</div>
         </div>
-        <div className="bg-white p-4 flex flex-col items-center justify-center">
-             <div className="flex items-center text-gray-500 mb-1">
-                <Clock className="w-4 h-4 mr-1" />
-                <span className="text-xs uppercase font-bold">Time</span>
-            </div>
-            <span className="text-2xl font-mono font-semibold text-gray-800">
-                {formatTime(elapsed)}
-            </span>
+        <div className="flex-1 p-3 text-center">
+          <div className="text-[10px] uppercase font-bold text-gray-400">Temps</div>
+          <div className="text-xl font-mono font-bold text-blue-600">{formatTime(elapsed)}</div>
         </div>
       </div>
 
-      {/* Breadcrumbs / Path */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="flex items-center text-gray-500 mb-4">
-            <Map className="w-4 h-4 mr-2" />
-            <span className="text-xs uppercase font-bold tracking-wider">Your Path</span>
+      {/* Path - Prend tout l'espace restant */}
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div className="flex items-center text-gray-400 mb-4">
+          <Map className="w-4 h-4 mr-2" />
+          <span className="text-xs uppercase font-bold tracking-wider">Ton Parcours</span>
         </div>
         
         <div className="space-y-3">
@@ -141,8 +133,17 @@ export const GameSidebar: React.FC<GameSidebarProps> = ({
         </div>
       </div>
 
-      <div className="p-4 bg-gray-50 text-center border-t border-gray-200">
-        <p className="text-xs text-gray-400">
+      <div className="p-4 bg-gray-50 border-t border-gray-200">
+        {onGoHome && (
+          <button
+            onClick={onGoHome}
+            className="w-full bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2.5 px-4 rounded-lg border border-gray-300 transition-colors flex items-center justify-center gap-2 mb-3"
+          >
+            <Home className="w-4 h-4" />
+            Retour à l'accueil
+          </button>
+        )}
+        <p className="text-xs text-gray-400 text-center">
             Wikipedia Link Race
         </p>
       </div>

@@ -11,10 +11,11 @@ import {
   limit,
   getDocs,
   Timestamp,
-  serverTimestamp
+  serverTimestamp,
+  deleteDoc
 } from 'firebase/firestore';
 import { db } from '../firebase.config';
-import type { User, UserProfile, GameEntry, DailyChallenge, GameMode } from '../types';
+import type { User, UserProfile, GameEntry, DailyChallenge, GameMode, DailyProgressState } from '../types';
 
 /**
  * Create or update a user profile in Firestore
@@ -182,6 +183,7 @@ export async function getGlobalLeaderboard(
 
 /**
  * Get leaderboard for a specific route
+ * Uses client-side filtering to avoid complex Firestore indexes
  */
 export async function getRouteLeaderboard(
   startPage: string,
@@ -189,46 +191,12 @@ export async function getRouteLeaderboard(
   mode?: GameMode,
   limitCount: number = 50
 ): Promise<GameEntry[]> {
-  const gamesRef = collection(db, 'games');
+  // Get all games and filter client-side to avoid index requirements
+  const allGames = await getGlobalLeaderboard(mode, 500);
 
-  let q;
-  if (mode) {
-    q = query(
-      gamesRef,
-      where('startPage', '==', startPage),
-      where('targetPage', '==', targetPage),
-      where('mode', '==', mode),
-      orderBy('score', 'asc'),
-      limit(limitCount)
-    );
-  } else {
-    q = query(
-      gamesRef,
-      where('startPage', '==', startPage),
-      where('targetPage', '==', targetPage),
-      orderBy('score', 'asc'),
-      limit(limitCount)
-    );
-  }
-
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      userId: data.userId,
-      playerName: data.playerName,
-      clicks: data.clicks,
-      timeSeconds: data.timeSeconds,
-      startPage: data.startPage,
-      targetPage: data.targetPage,
-      path: data.path,
-      mode: data.mode,
-      dailyChallengeId: data.dailyChallengeId,
-      timestamp: data.timestamp.toMillis(),
-      score: data.score
-    };
-  });
+  return allGames
+    .filter(game => game.startPage === startPage && game.targetPage === targetPage)
+    .slice(0, limitCount);
 }
 
 /**
@@ -299,4 +267,62 @@ export async function createDailyChallenge(challenge: DailyChallenge): Promise<v
     startPageData: challenge.startPageData,
     targetPageData: challenge.targetPageData
   });
+}
+
+/**
+ * Save daily challenge progress to Firestore
+ */
+export async function saveDailyProgress(
+  userId: string,
+  challengeId: string,
+  progress: DailyProgressState
+): Promise<void> {
+  const progressRef = doc(db, 'users', userId, 'daily_progress', challengeId);
+
+  await setDoc(progressRef, {
+    currentPageTitle: progress.currentPageTitle,
+    history: progress.history,
+    clicks: progress.clicks,
+    startTime: progress.startTime,
+    lastSaved: serverTimestamp(),
+    completed: progress.completed
+  });
+}
+
+/**
+ * Load daily challenge progress from Firestore
+ */
+export async function loadDailyProgress(
+  userId: string,
+  challengeId: string
+): Promise<DailyProgressState | null> {
+  const progressRef = doc(db, 'users', userId, 'daily_progress', challengeId);
+  const progressDoc = await getDoc(progressRef);
+
+  if (!progressDoc.exists()) {
+    return null;
+  }
+
+  const data = progressDoc.data();
+  return {
+    dailyChallengeId: challengeId,
+    userId,
+    currentPageTitle: data.currentPageTitle,
+    history: data.history,
+    clicks: data.clicks,
+    startTime: data.startTime,
+    lastSaved: data.lastSaved?.toMillis() || Date.now(),
+    completed: data.completed
+  };
+}
+
+/**
+ * Clear daily challenge progress from Firestore
+ */
+export async function clearDailyProgress(
+  userId: string,
+  challengeId: string
+): Promise<void> {
+  const progressRef = doc(db, 'users', userId, 'daily_progress', challengeId);
+  await deleteDoc(progressRef);
 }

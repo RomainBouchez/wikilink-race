@@ -9,7 +9,7 @@ class DailyChallengeService {
     return date.toISOString().split('T')[0]; // YYYY-MM-DD
   }
 
-  private getTodayId(): string {
+  getTodayId(): string {
     return this.generateChallengeId(new Date());
   }
 

@@ -108,17 +108,18 @@ export const WikiViewer: React.FC<WikiViewerProps> = ({ title, onNavigate }) => 
   return (
     <div 
       ref={containerRef}
-      className="wiki-content h-full overflow-y-auto bg-white p-6 rounded-lg shadow-sm border border-gray-200"
+      className="wiki-content h-full overflow-y-auto bg-white p-4 md:p-6 lg:p-8"
     >
-      <h1 className="text-3xl font-serif font-bold text-gray-900 mb-6 pb-4 border-b border-gray-200">
+      <h1 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">
         {title.replace(/_/g, ' ')}
       </h1>
       <div 
         onClick={handleContainerClick}
-        className="prose prose-slate max-w-none 
+        className="prose prose-sm md:prose-base lg:prose-lg prose-slate max-w-none 
           prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
           prose-headings:font-serif prose-headings:text-gray-800
-          prose-p:leading-relaxed prose-img:rounded-md"
+          prose-p:leading-relaxed prose-img:rounded-md
+          [&_table]:block [&_table]:overflow-x-auto" // Important pour les tableaux wiki qui cassent le mobile
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </div>
