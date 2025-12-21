@@ -1,15 +1,18 @@
 import React, { useState, useCallback } from 'react';
-import { GameStatus, GameState, WikiPageSummary } from './types';
-import { fetchRandomPage, fetchPageSummary } from './services/wikiService';
+import { GameStatus, GameState, WikiPageSummary, GameMode } from './types';
+import { fetchRandomPage, fetchPageSummary, fetchHybridPage } from './services/wikiService';
 import { leaderboardService } from './services/leaderboardService';
+import { dailyChallengeService } from './services/dailyChallengeService';
 import { WikiViewer } from './components/WikiViewer';
 import { GameSidebar } from './components/GameSidebar';
 import { Button } from './components/Button';
 import { Leaderboard } from './components/Leaderboard';
+import { ModeSelection } from './components/ModeSelection';
 import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search } from 'lucide-react';
 
 const INITIAL_STATE: GameState = {
   status: GameStatus.IDLE,
+  mode: null,
   startPage: null,
   targetPage: null,
   currentPage: null,
@@ -25,40 +28,62 @@ function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [lastSavedEntryId, setLastSavedEntryId] = useState<string | null>(null);
 
-  const initGame = async () => {
-    setGameState(prev => ({ ...prev, status: GameStatus.LOADING, error: null }));
+  const initGame = async (mode: GameMode) => {
+    setGameState(prev => ({ ...prev, status: GameStatus.LOADING, error: null, mode }));
 
     try {
-      // Fetch two truly random pages from French Wikipedia
-      const [start, target] = await Promise.all([
-        fetchRandomPage(),
-        fetchRandomPage()
-      ]);
+      let start: WikiPageSummary;
+      let target: WikiPageSummary;
+      let dailyChallengeId: string | undefined;
 
-      // Ensure start and target are not the same (unlikely but possible)
-      if (start.title === target.title) {
-         // lazy retry
-         const newTarget = await fetchRandomPage();
-         setGameState({
-            ...INITIAL_STATE,
-            status: GameStatus.PLAYING,
-            startPage: start,
-            targetPage: newTarget,
-            currentPage: start,
-            history: [start.title],
-            startTime: Date.now(),
-         });
-         return;
+      if (mode === GameMode.DAILY) {
+        // Get today's daily challenge
+        const dailyChallenge = await dailyChallengeService.getTodayChallenge();
+        dailyChallengeId = dailyChallenge.id;
+
+        // Use the challenge's pages
+        if (dailyChallenge.startPageData && dailyChallenge.targetPageData) {
+          start = dailyChallenge.startPageData;
+          target = dailyChallenge.targetPageData;
+        } else {
+          // Fallback: fetch the summaries
+          [start, target] = await Promise.all([
+            fetchPageSummary(dailyChallenge.startPage),
+            fetchPageSummary(dailyChallenge.targetPage),
+          ]);
+        }
+      } else {
+        // Training mode: Use hybrid selection (80% popular, 20% random) for both pages
+        [start, target] = await Promise.all([
+          fetchHybridPage(),
+          fetchHybridPage()
+        ]);
+
+        // Ensure start and target are not the same
+        let retries = 0;
+        const maxRetries = 5;
+
+        while (start.title === target.title && retries < maxRetries) {
+          target = await fetchHybridPage();
+          retries++;
+        }
+
+        // If still the same after retries (extremely unlikely), force random
+        if (start.title === target.title) {
+          target = await fetchRandomPage();
+        }
       }
 
       setGameState({
         ...INITIAL_STATE,
         status: GameStatus.PLAYING,
+        mode,
         startPage: start,
         targetPage: target,
         currentPage: start,
         history: [start.title],
         startTime: Date.now(),
+        dailyChallengeId,
       });
 
     } catch (err) {
@@ -143,69 +168,63 @@ function App() {
     return (
       <>
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-6 font-sans">
-          <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-10 text-center">
-                <Globe className="w-16 h-16 text-white mx-auto mb-4 opacity-90" />
-                <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">WikiLink Race</h1>
-                <p className="text-blue-100 text-lg">The 6 degrees of Wikipedia separation game.</p>
-            </div>
-            
-            <div className="p-10">
-                <div className="prose prose-blue mx-auto text-gray-600 mb-8">
-                    <p className="lead text-center">
-                        Navigate from a <strong>random starting page</strong> to a <strong>target page</strong> using only hyperlinks.
-                    </p>
-                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 list-none pl-0">
-                         <li className="flex items-start">
-                             <div className="bg-blue-100 p-2 rounded-full mr-3 text-blue-600">
-                                 <BookOpen size={18} />
-                             </div>
-                             <span>Start at a random article.</span>
-                         </li>
-                         <li className="flex items-start">
-                             <div className="bg-blue-100 p-2 rounded-full mr-3 text-blue-600">
-                                 <Search size={18} />
-                             </div>
-                             <span>Find the target article.</span>
-                         </li>
-                         <li className="flex items-start">
-                             <div className="bg-blue-100 p-2 rounded-full mr-3 text-blue-600">
-                                 <ArrowRight size={18} />
-                             </div>
-                             <span>Click blue links only.</span>
-                         </li>
-                         <li className="flex items-start">
-                             <div className="bg-blue-100 p-2 rounded-full mr-3 text-blue-600">
-                                 <Trophy size={18} />
-                             </div>
-                             <span>Lowest clicks & time wins.</span>
-                         </li>
-                    </ul>
-                </div>
+          <div className="max-w-4xl w-full">
+            {/* Header */}
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-10 text-center">
+                  <Globe className="w-16 h-16 text-white mx-auto mb-4 opacity-90" />
+                  <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">WikiLink Race</h1>
+                  <p className="text-blue-100 text-lg">The 6 degrees of Wikipedia separation game.</p>
+              </div>
 
-                {gameState.error && (
-                    <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 flex items-center">
-                        <span className="mr-2">⚠️</span> {gameState.error}
-                    </div>
-                )}
+              <div className="p-8">
+                  <div className="prose prose-blue mx-auto text-gray-600">
+                      <p className="lead text-center mb-6">
+                          Navigate from a <strong>starting page</strong> to a <strong>target page</strong> using only hyperlinks.
+                      </p>
+                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 list-none pl-0">
+                           <li className="flex items-start">
+                               <div className="bg-blue-100 p-2 rounded-full mr-3 text-blue-600">
+                                   <BookOpen size={18} />
+                               </div>
+                               <span>Start at a given article.</span>
+                           </li>
+                           <li className="flex items-start">
+                               <div className="bg-blue-100 p-2 rounded-full mr-3 text-blue-600">
+                                   <Search size={18} />
+                               </div>
+                               <span>Find the target article.</span>
+                           </li>
+                           <li className="flex items-start">
+                               <div className="bg-blue-100 p-2 rounded-full mr-3 text-blue-600">
+                                   <ArrowRight size={18} />
+                               </div>
+                               <span>Click blue links only.</span>
+                           </li>
+                           <li className="flex items-start">
+                               <div className="bg-blue-100 p-2 rounded-full mr-3 text-blue-600">
+                                   <Trophy size={18} />
+                               </div>
+                               <span>Lowest clicks & time wins.</span>
+                           </li>
+                      </ul>
+                  </div>
 
-                <div className="flex flex-col sm:flex-row justify-center gap-3">
-                    <Button
-                        onClick={initGame}
-                        className="w-full md:w-auto text-lg px-8 py-4 shadow-lg transform transition hover:-translate-y-1"
-                    >
-                        Start New Race
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        onClick={() => setShowLeaderboard(true)}
-                        className="w-full md:w-auto text-lg px-8 py-4 shadow-lg transform transition hover:-translate-y-1 flex items-center justify-center"
-                    >
-                        <Trophy className="w-5 h-5 mr-2" /> Leaderboard
-                    </Button>
-                </div>
+                  {gameState.error && (
+                      <div className="bg-red-50 text-red-700 p-4 rounded-lg mt-6 flex items-center">
+                          <span className="mr-2">⚠️</span> {gameState.error}
+                      </div>
+                  )}
+              </div>
             </div>
-             <div className="bg-gray-50 p-4 text-center text-xs text-gray-400 border-t">
+
+            {/* Mode Selection */}
+            <ModeSelection
+              onSelectMode={initGame}
+              onViewLeaderboard={() => setShowLeaderboard(true)}
+            />
+
+            <div className="text-center text-xs text-gray-400 mt-4">
                 Powered by Wikipedia API
             </div>
           </div>
@@ -248,7 +267,14 @@ function App() {
           startPage: gameState.startPage!.title,
           targetPage: gameState.targetPage!.title,
           path: gameState.history,
+          mode: gameState.mode!,
+          dailyChallengeId: gameState.dailyChallengeId,
         });
+
+        // Mark daily challenge as completed
+        if (gameState.mode === GameMode.DAILY) {
+          dailyChallengeService.markTodayCompleted();
+        }
 
         setLastSavedEntryId(entry.id);
         setShowLeaderboard(true);
@@ -308,7 +334,7 @@ function App() {
                           <Button variant="secondary" onClick={() => window.open(`https://twitter.com/intent/tweet?text=I%20reached%20${gameState.targetPage?.title}%20from%20${gameState.startPage?.title}%20in%20${gameState.clicks}%20clicks!%20#WikiLinkRace`, '_blank')}>
                               Share Result
                           </Button>
-                          <Button onClick={initGame} className="flex items-center justify-center">
+                          <Button onClick={() => initGame(gameState.mode!)} className="flex items-center justify-center">
                               <RotateCcw className="w-4 h-4 mr-2" /> Play Again
                           </Button>
                       </div>

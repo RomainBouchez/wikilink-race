@@ -1,4 +1,4 @@
-import { LeaderboardEntry } from '../types';
+import { LeaderboardEntry, GameMode } from '../types';
 
 const STORAGE_KEY = 'wikilink_race_leaderboard';
 const MAX_ENTRIES = 50;
@@ -25,13 +25,19 @@ export const leaderboardService = {
   },
 
   /**
-   * Get all leaderboard entries
+   * Get all leaderboard entries, optionally filtered by mode
    */
-  getAllEntries(): LeaderboardEntry[] {
+  getAllEntries(mode?: GameMode): LeaderboardEntry[] {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
       if (!data) return [];
-      return JSON.parse(data) as LeaderboardEntry[];
+      const entries = JSON.parse(data) as LeaderboardEntry[];
+
+      if (mode) {
+        return entries.filter(entry => entry.mode === mode);
+      }
+
+      return entries;
     } catch (error) {
       console.error('Failed to load leaderboard:', error);
       return [];
@@ -39,20 +45,34 @@ export const leaderboardService = {
   },
 
   /**
-   * Get top N entries
+   * Get top N entries, optionally filtered by mode
    */
-  getTopEntries(limit: number = 10): LeaderboardEntry[] {
-    const entries = this.getAllEntries();
+  getTopEntries(limit: number = 10, mode?: GameMode): LeaderboardEntry[] {
+    const entries = this.getAllEntries(mode);
     return this.sortEntries(entries).slice(0, limit);
   },
 
   /**
    * Get entries for a specific route
    */
-  getEntriesForRoute(startPage: string, targetPage: string): LeaderboardEntry[] {
-    const entries = this.getAllEntries();
+  getEntriesForRoute(startPage: string, targetPage: string, mode?: GameMode): LeaderboardEntry[] {
+    const entries = this.getAllEntries(mode);
     return entries
       .filter(entry => entry.startPage === startPage && entry.targetPage === targetPage)
+      .sort((a, b) => {
+        // Sort by clicks first, then by time
+        if (a.clicks !== b.clicks) return a.clicks - b.clicks;
+        return a.timeSeconds - b.timeSeconds;
+      });
+  },
+
+  /**
+   * Get entries for today's daily challenge
+   */
+  getDailyChallengeEntries(dailyChallengeId: string): LeaderboardEntry[] {
+    const entries = this.getAllEntries(GameMode.DAILY);
+    return entries
+      .filter(entry => entry.dailyChallengeId === dailyChallengeId)
       .sort((a, b) => {
         // Sort by clicks first, then by time
         if (a.clicks !== b.clicks) return a.clicks - b.clicks;

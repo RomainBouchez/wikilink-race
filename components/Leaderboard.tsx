@@ -1,30 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { LeaderboardEntry } from '../types';
+import { LeaderboardEntry, GameMode } from '../types';
 import { leaderboardService } from '../services/leaderboardService';
-import { Trophy, Clock, MousePointerClick, Calendar, User, Download, Upload, Trash2 } from 'lucide-react';
+import { Trophy, Clock, MousePointerClick, Calendar, User, Download, Upload, Trash2, Dumbbell } from 'lucide-react';
 import { Button } from './Button';
 
 interface LeaderboardProps {
   onClose?: () => void;
   highlightEntryId?: string;
+  defaultMode?: GameMode;
 }
 
 type ViewMode = 'all' | 'route';
 
-export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntryId }) => {
+export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntryId, defaultMode }) => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [selectedRoute, setSelectedRoute] = useState<{ start: string; target: string } | null>(null);
+  const [selectedMode, setSelectedMode] = useState<GameMode | 'all'>(defaultMode || 'all');
 
   useEffect(() => {
     loadEntries();
-  }, [viewMode, selectedRoute]);
+  }, [viewMode, selectedRoute, selectedMode]);
 
   const loadEntries = () => {
+    const mode = selectedMode === 'all' ? undefined : selectedMode;
+
     if (viewMode === 'route' && selectedRoute) {
-      setEntries(leaderboardService.getEntriesForRoute(selectedRoute.start, selectedRoute.target));
+      setEntries(leaderboardService.getEntriesForRoute(selectedRoute.start, selectedRoute.target, mode));
     } else {
-      setEntries(leaderboardService.getTopEntries(50));
+      setEntries(leaderboardService.getTopEntries(50, mode));
     }
   };
 
@@ -69,7 +73,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntr
   };
 
   const getUniqueRoutes = () => {
-    const allEntries = leaderboardService.getAllEntries();
+    const mode = selectedMode === 'all' ? undefined : selectedMode;
+    const allEntries = leaderboardService.getAllEntries(mode);
     const routes = new Map<string, { start: string; target: string; count: number }>();
 
     allEntries.forEach(entry => {
@@ -116,57 +121,85 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntr
         </div>
 
         {/* Controls */}
-        <div className="p-4 border-b bg-gray-50 flex flex-wrap gap-2 items-center justify-between">
-          <div className="flex gap-2">
+        <div className="p-4 border-b bg-gray-50 space-y-3">
+          {/* Game Mode Filter */}
+          <div className="flex gap-2 flex-wrap">
             <Button
-              variant={viewMode === 'all' ? 'primary' : 'secondary'}
-              onClick={() => {
-                setViewMode('all');
-                setSelectedRoute(null);
-              }}
+              variant={selectedMode === 'all' ? 'primary' : 'secondary'}
+              onClick={() => setSelectedMode('all')}
               className="text-sm py-2"
             >
-              All Scores
+              All Modes
             </Button>
             <Button
-              variant={viewMode === 'route' ? 'primary' : 'secondary'}
-              onClick={() => setViewMode('route')}
-              className="text-sm py-2"
+              variant={selectedMode === GameMode.DAILY ? 'primary' : 'secondary'}
+              onClick={() => setSelectedMode(GameMode.DAILY)}
+              className="text-sm py-2 flex items-center"
             >
-              By Route
+              <Calendar className="w-4 h-4 mr-1" /> Daily
+            </Button>
+            <Button
+              variant={selectedMode === GameMode.TRAINING ? 'primary' : 'secondary'}
+              onClick={() => setSelectedMode(GameMode.TRAINING)}
+              className="text-sm py-2 flex items-center"
+            >
+              <Dumbbell className="w-4 h-4 mr-1" /> Training
             </Button>
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              onClick={handleExport}
-              className="text-sm py-2 flex items-center"
-            >
-              <Download className="w-4 h-4 mr-1" /> Export
-            </Button>
-            <label className="cursor-pointer">
+          {/* View Mode and Actions */}
+          <div className="flex flex-wrap gap-2 items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === 'all' ? 'primary' : 'secondary'}
+                onClick={() => {
+                  setViewMode('all');
+                  setSelectedRoute(null);
+                }}
+                className="text-sm py-2"
+              >
+                All Scores
+              </Button>
+              <Button
+                variant={viewMode === 'route' ? 'primary' : 'secondary'}
+                onClick={() => setViewMode('route')}
+                className="text-sm py-2"
+              >
+                By Route
+              </Button>
+            </div>
+
+            <div className="flex gap-2">
               <Button
                 variant="secondary"
+                onClick={handleExport}
                 className="text-sm py-2 flex items-center"
-                as="span"
               >
-                <Upload className="w-4 h-4 mr-1" /> Import
+                <Download className="w-4 h-4 mr-1" /> Export
               </Button>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-              />
-            </label>
-            <Button
-              variant="secondary"
-              onClick={handleClear}
-              className="text-sm py-2 flex items-center text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="w-4 h-4 mr-1" /> Clear
-            </Button>
+              <label className="cursor-pointer">
+                <Button
+                  variant="secondary"
+                  className="text-sm py-2 flex items-center"
+                  as="span"
+                >
+                  <Upload className="w-4 h-4 mr-1" /> Import
+                </Button>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImport}
+                  className="hidden"
+                />
+              </label>
+              <Button
+                variant="secondary"
+                onClick={handleClear}
+                className="text-sm py-2 flex items-center text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4 mr-1" /> Clear
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -233,6 +266,13 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntr
                         <div className="flex items-center gap-2 mb-2">
                           <User className="w-4 h-4 text-gray-500" />
                           <span className="font-bold text-gray-900">{entry.playerName}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            entry.mode === GameMode.DAILY
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {entry.mode === GameMode.DAILY ? '📅 Daily' : '🏋️ Training'}
+                          </span>
                           <span className="text-xs text-gray-500">
                             Score: {score}
                           </span>

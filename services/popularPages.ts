@@ -1,174 +1,175 @@
 /**
- * Comprehensive list of popular Wikipedia pages organized by category
- * This list contains well-known topics across various domains
+ * Liste complète de pages Wikipedia populaires organisées par catégorie
+ * Cette liste contient des sujets bien connus dans divers domaines
+ * Tous les titres sont en français pour correspondre à fr.wikipedia.org
  */
 
 export const POPULAR_PAGES_BY_CATEGORY = {
-  'Historical Figures': [
-    'Albert_Einstein', 'Leonardo_da_Vinci', 'Napoleon', 'Cleopatra', 'Julius_Caesar',
-    'Abraham_Lincoln', 'George_Washington', 'Winston_Churchill', 'Mahatma_Gandhi', 'Nelson_Mandela',
-    'Martin_Luther_King_Jr.', 'Marie_Curie', 'Isaac_Newton', 'Charles_Darwin', 'William_Shakespeare',
-    'Adolf_Hitler', 'Joseph_Stalin', 'Mao_Zedong', 'Genghis_Khan', 'Alexander_the_Great',
-    'Queen_Victoria', 'Queen_Elizabeth_II', 'Catherine_the_Great', 'Joan_of_Arc', 'Harriet_Tubman',
-    'Rosa_Parks', 'Malcolm_X', 'Che_Guevara', 'Vladimir_Lenin', 'Fidel_Castro',
+  'Personnages historiques': [
+    'Albert_Einstein', 'Léonard_de_Vinci', 'Napoléon_Ier', 'Cléopâtre', 'Jules_César',
+    'Abraham_Lincoln', 'George_Washington', 'Winston_Churchill', 'Mohandas_Karamchand_Gandhi', 'Nelson_Mandela',
+    'Martin_Luther_King', 'Marie_Curie', 'Isaac_Newton', 'Charles_Darwin', 'William_Shakespeare',
+    'Adolf_Hitler', 'Joseph_Staline', 'Mao_Zedong', 'Gengis_Khan', 'Alexandre_le_Grand',
+    'Victoria_(reine)', 'Élisabeth_II', 'Catherine_II_de_Russie', 'Jeanne_d\'Arc', 'Harriet_Tubman',
+    'Rosa_Parks', 'Malcolm_X', 'Che_Guevara', 'Lénine', 'Fidel_Castro',
     'Benjamin_Franklin', 'Thomas_Jefferson', 'Karl_Marx', 'Sigmund_Freud', 'Friedrich_Nietzsche',
-    'Socrates', 'Plato', 'Aristotle', 'Confucius', 'Buddha',
-    'Jesus', 'Muhammad', 'Moses', 'Mother_Teresa', 'Dalai_Lama',
-    'Christopher_Columbus', 'Marco_Polo', 'Vasco_da_Gama', 'Ferdinand_Magellan', 'Neil_Armstrong',
+    'Socrate', 'Platon', 'Aristote', 'Confucius', 'Bouddha',
+    'Jésus_de_Nazareth', 'Mahomet', 'Moïse', 'Mère_Teresa', 'Dalaï-lama',
+    'Christophe_Colomb', 'Marco_Polo', 'Vasco_de_Gama', 'Ferdinand_Magellan', 'Neil_Armstrong',
   ],
 
-  'Geography & Places': [
-    'Paris', 'London', 'New_York_City', 'Tokyo', 'Rome', 'Athens', 'Cairo', 'Moscow',
-    'Beijing', 'Sydney', 'Mumbai', 'Istanbul', 'Barcelona', 'Amsterdam', 'Vienna',
+  'Géographie et lieux': [
+    'Paris', 'Londres', 'New_York', 'Tokyo', 'Rome', 'Athènes', 'Le_Caire', 'Moscou',
+    'Pékin', 'Sydney', 'Mumbai', 'Istanbul', 'Barcelone', 'Amsterdam', 'Vienne_(Autriche)',
     'Los_Angeles', 'Chicago', 'San_Francisco', 'Las_Vegas', 'Miami',
-    'Mount_Everest', 'Amazon_River', 'Nile', 'Sahara', 'Pacific_Ocean', 'Atlantic_Ocean',
-    'Mediterranean_Sea', 'Himalayas', 'Alps', 'Andes', 'Rocky_Mountains',
-    'Great_Wall_of_China', 'Eiffel_Tower', 'Statue_of_Liberty', 'Taj_Mahal', 'Colosseum',
-    'Pyramids_of_Giza', 'Machu_Picchu', 'Stonehenge', 'Big_Ben', 'Leaning_Tower_of_Pisa',
-    'Grand_Canyon', 'Niagara_Falls', 'Victoria_Falls', 'Great_Barrier_Reef', 'Antarctica',
-    'Sahara', 'Amazon_rainforest', 'Yellowstone_National_Park', 'Yosemite_National_Park',
+    'Mont_Everest', 'Amazone_(fleuve)', 'Nil', 'Sahara', 'Océan_Pacifique', 'Océan_Atlantique',
+    'Mer_Méditerranée', 'Himalaya', 'Alpes', 'Cordillère_des_Andes', 'Montagnes_Rocheuses',
+    'Grande_Muraille', 'Tour_Eiffel', 'Statue_de_la_Liberté', 'Taj_Mahal', 'Colisée',
+    'Pyramides_d\'Égypte', 'Machu_Picchu', 'Stonehenge', 'Big_Ben', 'Tour_de_Pise',
+    'Grand_Canyon', 'Chutes_du_Niagara', 'Chutes_Victoria', 'Grande_barrière_de_corail', 'Antarctique',
+    'Forêt_amazonienne', 'Parc_national_de_Yellowstone', 'Parc_national_de_Yosemite',
   ],
 
-  'Science & Technology': [
-    'Internet', 'Artificial_intelligence', 'Computer', 'Smartphone', 'DNA', 'Evolution',
-    'Solar_System', 'Mars', 'Moon', 'Sun', 'Black_hole', 'Big_Bang', 'Gravity', 'Electricity',
-    'Quantum_mechanics', 'Relativity', 'Photosynthesis', 'Cell_(biology)', 'Atom', 'Molecule',
-    'Physics', 'Chemistry', 'Biology', 'Astronomy', 'Geology',
-    'Climate_change', 'Global_warming', 'Renewable_energy', 'Nuclear_power', 'Fossil_fuel',
-    'Vaccine', 'Antibiotic', 'Cancer', 'COVID-19', 'Virus', 'Bacteria',
-    'Machine_learning', 'Robotics', 'Cryptocurrency', 'Bitcoin', 'Blockchain',
-    'Virtual_reality', 'Augmented_reality', '3D_printing', 'Nanotechnology', 'Biotechnology',
-    'Space_exploration', 'International_Space_Station', 'Hubble_Space_Telescope', 'SpaceX',
+  'Sciences et technologie': [
+    'Internet', 'Intelligence_artificielle', 'Ordinateur', 'Smartphone', 'Acide_désoxyribonucléique', 'Évolution_(biologie)',
+    'Système_solaire', 'Mars_(planète)', 'Lune', 'Soleil', 'Trou_noir', 'Big_Bang', 'Gravitation', 'Électricité',
+    'Mécanique_quantique', 'Relativité_générale', 'Photosynthèse', 'Cellule_(biologie)', 'Atome', 'Molécule',
+    'Physique', 'Chimie', 'Biologie', 'Astronomie', 'Géologie',
+    'Réchauffement_climatique', 'Changement_climatique', 'Énergie_renouvelable', 'Énergie_nucléaire', 'Combustible_fossile',
+    'Vaccin', 'Antibiotique', 'Cancer', 'Covid-19', 'Virus', 'Bactérie',
+    'Apprentissage_automatique', 'Robotique', 'Cryptomonnaie', 'Bitcoin', 'Blockchain',
+    'Réalité_virtuelle', 'Réalité_augmentée', 'Impression_3D', 'Nanotechnologie', 'Biotechnologie',
+    'Exploration_spatiale', 'Station_spatiale_internationale', 'Télescope_spatial_Hubble', 'SpaceX',
   ],
 
-  'Animals & Nature': [
-    'Lion', 'Elephant', 'Dolphin', 'Penguin', 'Tiger', 'Eagle', 'Shark', 'Whale',
-    'Dog', 'Cat', 'Horse', 'Dinosaur', 'Tree', 'Ocean', 'Mountain', 'Forest',
-    'Panda', 'Giraffe', 'Zebra', 'Gorilla', 'Chimpanzee', 'Orangutan', 'Koala', 'Kangaroo',
-    'Bear', 'Wolf', 'Fox', 'Deer', 'Rabbit', 'Squirrel', 'Raccoon',
-    'Snake', 'Crocodile', 'Alligator', 'Lizard', 'Turtle', 'Frog',
-    'Spider', 'Bee', 'Butterfly', 'Ant', 'Mosquito', 'Fly',
-    'Salmon', 'Tuna', 'Octopus', 'Jellyfish', 'Starfish', 'Coral',
-    'Rose', 'Sunflower', 'Orchid', 'Cactus', 'Palm_tree', 'Oak', 'Pine',
+  'Animaux et nature': [
+    'Lion', 'Éléphant', 'Dauphin', 'Manchot', 'Tigre', 'Aigle', 'Requin', 'Baleine',
+    'Chien', 'Chat', 'Cheval', 'Dinosaure', 'Arbre', 'Océan', 'Montagne', 'Forêt',
+    'Panda_géant', 'Girafe', 'Zèbre', 'Gorille', 'Chimpanzé', 'Orang-outan', 'Koala', 'Kangourou',
+    'Ours', 'Loup', 'Renard', 'Cerf', 'Lapin', 'Écureuil', 'Raton_laveur',
+    'Serpent', 'Crocodile', 'Alligator', 'Lézard', 'Tortue', 'Grenouille',
+    'Araignée', 'Abeille', 'Papillon', 'Fourmi', 'Moustique', 'Mouche',
+    'Saumon', 'Thon', 'Poulpe', 'Méduse', 'Étoile_de_mer', 'Corail',
+    'Rose', 'Tournesol', 'Orchidée', 'Cactus', 'Palmier', 'Chêne', 'Pin',
   ],
 
-  'History & Culture': [
-    'Ancient_Egypt', 'Ancient_Rome', 'Ancient_Greece', 'Roman_Empire', 'Renaissance',
-    'World_War_II', 'World_War_I', 'Cold_War', 'French_Revolution', 'Industrial_Revolution',
-    'American_Revolution', 'Russian_Revolution', 'Chinese_Communist_Revolution', 'Vietnam_War',
-    'Middle_Ages', 'Byzantine_Empire', 'Ottoman_Empire', 'Mongol_Empire', 'British_Empire',
-    'Slavery', 'Holocaust', 'Colonialism', 'Imperialism', 'Feudalism',
-    'Ancient_China', 'Ancient_India', 'Maya_civilization', 'Aztec', 'Inca_Empire',
-    'Mesopotamia', 'Babylon', 'Persian_Empire', 'Phoenicia', 'Carthage',
-    'Viking', 'Samurai', 'Knight', 'Gladiator', 'Pharaoh',
-    'Constitution', 'Magna_Carta', 'Declaration_of_Independence', 'Bill_of_Rights',
+  'Histoire et culture': [
+    'Égypte_antique', 'Rome_antique', 'Grèce_antique', 'Empire_romain', 'Renaissance',
+    'Seconde_Guerre_mondiale', 'Première_Guerre_mondiale', 'Guerre_froide', 'Révolution_française', 'Révolution_industrielle',
+    'Révolution_américaine', 'Révolution_russe', 'Révolution_chinoise', 'Guerre_du_Viêt_Nam',
+    'Moyen_Âge', 'Empire_byzantin', 'Empire_ottoman', 'Empire_mongol', 'Empire_britannique',
+    'Esclavage', 'Shoah', 'Colonisation', 'Impérialisme', 'Féodalité',
+    'Histoire_de_la_Chine', 'Histoire_de_l\'Inde', 'Civilisation_maya', 'Aztèques', 'Empire_inca',
+    'Mésopotamie', 'Babylone', 'Empire_perse', 'Phénicie', 'Carthage',
+    'Vikings', 'Samouraï', 'Chevalier', 'Gladiateur', 'Pharaon',
+    'Constitution', 'Grande_Charte', 'Déclaration_d\'indépendance_des_États-Unis', 'Déclaration_des_droits_de_l\'homme_et_du_citoyen_de_1789',
   ],
 
-  'Arts & Entertainment': [
-    'The_Beatles', 'Michael_Jackson', 'Elvis_Presley', 'Mozart', 'Beethoven',
-    'Mona_Lisa', 'Vincent_van_Gogh', 'Pablo_Picasso', 'Hollywood', 'Cinema',
-    'Harry_Potter', 'Star_Wars', 'The_Lord_of_the_Rings', 'Marvel_Comics', 'Batman',
-    'Superman', 'Spider-Man', 'Disney', 'Pixar', 'DreamWorks',
+  'Arts et divertissement': [
+    'The_Beatles', 'Michael_Jackson', 'Elvis_Presley', 'Wolfgang_Amadeus_Mozart', 'Ludwig_van_Beethoven',
+    'La_Joconde', 'Vincent_van_Gogh', 'Pablo_Picasso', 'Hollywood', 'Cinéma',
+    'Harry_Potter', 'Star_Wars', 'Le_Seigneur_des_anneaux', 'Marvel_Comics', 'Batman',
+    'Superman', 'Spider-Man', 'The_Walt_Disney_Company', 'Pixar', 'DreamWorks',
     'Netflix', 'YouTube', 'TikTok', 'Instagram', 'Facebook',
     'Leonardo_DiCaprio', 'Tom_Hanks', 'Meryl_Streep', 'Brad_Pitt', 'Angelina_Jolie',
     'Taylor_Swift', 'Beyoncé', 'Rihanna', 'Lady_Gaga', 'Madonna',
-    'Bob_Dylan', 'David_Bowie', 'Queen_(band)', 'Led_Zeppelin', 'Pink_Floyd',
-    'Game_of_Thrones', 'Breaking_Bad', 'The_Simpsons', 'Friends', 'Seinfeld',
-    'The_Godfather', 'Titanic', 'Avatar_(2009_film)', 'Avengers:_Endgame', 'Inception',
-    'Hamlet', 'Romeo_and_Juliet', 'Pride_and_Prejudice', 'To_Kill_a_Mockingbird', '1984_(novel)',
+    'Bob_Dylan', 'David_Bowie', 'Queen_(groupe)', 'Led_Zeppelin', 'Pink_Floyd',
+    'Game_of_Thrones', 'Breaking_Bad', 'Les_Simpson', 'Friends', 'Seinfeld',
+    'Le_Parrain', 'Titanic_(film,_1997)', 'Avatar_(film,_2009)', 'Avengers:_Endgame', 'Inception',
+    'Hamlet', 'Roméo_et_Juliette', 'Orgueil_et_Préjugés', 'Ne_tirez_pas_sur_l\'oiseau_moqueur', '1984_(roman)',
   ],
 
   'Sports': [
-    'Football', 'Basketball', 'Tennis', 'Olympic_Games', 'FIFA_World_Cup',
-    'Muhammad_Ali', 'Cristiano_Ronaldo', 'Lionel_Messi', 'Michael_Jordan', 'Usain_Bolt',
-    'Baseball', 'Cricket', 'Rugby', 'Golf', 'Swimming', 'Boxing', 'Wrestling',
-    'American_football', 'Ice_hockey', 'Volleyball', 'Table_tennis', 'Badminton',
+    'Football', 'Basket-ball', 'Tennis', 'Jeux_olympiques', 'Coupe_du_monde_de_football',
+    'Mohamed_Ali', 'Cristiano_Ronaldo', 'Lionel_Messi', 'Michael_Jordan', 'Usain_Bolt',
+    'Baseball', 'Cricket', 'Rugby', 'Golf', 'Natation', 'Boxe', 'Lutte',
+    'Football_américain', 'Hockey_sur_glace', 'Volley-ball', 'Tennis_de_table', 'Badminton',
     'LeBron_James', 'Serena_Williams', 'Roger_Federer', 'Rafael_Nadal', 'Novak_Djokovic',
-    'Pelé', 'Diego_Maradona', 'Zinedine_Zidane', 'Kobe_Bryant', 'Tom_Brady',
+    'Pelé', 'Diego_Maradona', 'Zinédine_Zidane', 'Kobe_Bryant', 'Tom_Brady',
     'Tiger_Woods', 'Phil_Mickelson', 'Simone_Biles', 'Michael_Phelps', 'Katie_Ledecky',
-    'UEFA_Champions_League', 'Super_Bowl', 'NBA', 'NFL', 'MLB', 'Premier_League',
+    'Ligue_des_champions_de_l\'UEFA', 'Super_Bowl', 'National_Basketball_Association', 'National_Football_League', 'Ligue_majeure_de_baseball', 'Premier_League',
   ],
 
-  'Countries & Politics': [
-    'United_States', 'France', 'Germany', 'United_Kingdom', 'China', 'Japan', 'India',
-    'Brazil', 'Australia', 'Canada', 'Italy', 'Spain', 'Russia', 'Egypt', 'Mexico',
-    'Argentina', 'South_Africa', 'Nigeria', 'Kenya', 'Saudi_Arabia', 'Turkey',
-    'South_Korea', 'North_Korea', 'Thailand', 'Vietnam', 'Indonesia', 'Philippines',
-    'Poland', 'Ukraine', 'Greece', 'Portugal', 'Netherlands', 'Belgium', 'Switzerland',
-    'Donald_Trump', 'Joe_Biden', 'Barack_Obama', 'Vladimir_Putin', 'Xi_Jinping',
+  'Pays et politique': [
+    'États-Unis', 'France', 'Allemagne', 'Royaume-Uni', 'Chine', 'Japon', 'Inde',
+    'Brésil', 'Australie', 'Canada', 'Italie', 'Espagne', 'Russie', 'Égypte', 'Mexique',
+    'Argentine', 'Afrique_du_Sud', 'Nigeria', 'Kenya', 'Arabie_saoudite', 'Turquie',
+    'Corée_du_Sud', 'Corée_du_Nord', 'Thaïlande', 'Viêt_Nam', 'Indonésie', 'Philippines',
+    'Pologne', 'Ukraine', 'Grèce', 'Portugal', 'Pays-Bas', 'Belgique', 'Suisse',
+    'Donald_Trump', 'Joe_Biden', 'Barack_Obama', 'Vladimir_Poutine', 'Xi_Jinping',
     'Emmanuel_Macron', 'Angela_Merkel', 'Boris_Johnson', 'Narendra_Modi', 'Justin_Trudeau',
-    'United_Nations', 'European_Union', 'NATO', 'World_Bank', 'International_Monetary_Fund',
-    'Democracy', 'Communism', 'Socialism', 'Capitalism', 'Fascism', 'Totalitarianism',
+    'Organisation_des_Nations_unies', 'Union_européenne', 'Organisation_du_traité_de_l\'Atlantique_nord', 'Banque_mondiale', 'Fonds_monétaire_international',
+    'Démocratie', 'Communisme', 'Socialisme', 'Capitalisme', 'Fascisme', 'Totalitarisme',
   ],
 
-  'Philosophy & Religion': [
-    'Love', 'Democracy', 'Religion', 'Philosophy', 'Christianity', 'Islam', 'Judaism',
-    'Hinduism', 'Buddhism', 'Atheism', 'Agnosticism', 'God', 'Heaven', 'Hell',
-    'Ethics', 'Morality', 'Justice', 'Freedom', 'Truth', 'Beauty',
-    'Existentialism', 'Nihilism', 'Stoicism', 'Utilitarianism', 'Humanism',
-    'Bible', 'Quran', 'Torah', 'Bhagavad_Gita', 'Tao_Te_Ching',
-    'Pope', 'Vatican_City', 'Mecca', 'Jerusalem', 'Dalai_Lama',
+  'Philosophie et religion': [
+    'Amour', 'Démocratie', 'Religion', 'Philosophie', 'Christianisme', 'Islam', 'Judaïsme',
+    'Hindouisme', 'Bouddhisme', 'Athéisme', 'Agnosticisme', 'Dieu', 'Paradis', 'Enfer',
+    'Éthique', 'Morale', 'Justice', 'Liberté', 'Vérité', 'Beauté',
+    'Existentialisme', 'Nihilisme', 'Stoïcisme', 'Utilitarisme', 'Humanisme',
+    'Bible', 'Coran', 'Torah', 'Bhagavad-Gita', 'Tao_Tö_King',
+    'Pape', 'Vatican', 'La_Mecque', 'Jérusalem', 'Dalaï-lama',
   ],
 
-  'Science Concepts': [
-    'Mathematics', 'Algebra', 'Calculus', 'Geometry', 'Statistics', 'Probability',
-    'Psychology', 'Sociology', 'Anthropology', 'Economics', 'Politics', 'History',
-    'Language', 'Education', 'Medicine', 'Engineering', 'Architecture',
-    'Time', 'Space', 'Matter', 'Energy', 'Light', 'Sound', 'Heat',
-    'Periodic_table', 'Water', 'Air', 'Fire', 'Earth', 'Metal',
+  'Concepts scientifiques': [
+    'Mathématiques', 'Algèbre', 'Calcul_infinitésimal', 'Géométrie', 'Statistique', 'Probabilité',
+    'Psychologie', 'Sociologie', 'Anthropologie', 'Économie', 'Politique', 'Histoire',
+    'Langage', 'Éducation', 'Médecine', 'Ingénierie', 'Architecture',
+    'Temps', 'Espace_(cosmologie)', 'Matière', 'Énergie', 'Lumière', 'Son', 'Chaleur',
+    'Tableau_périodique_des_éléments', 'Eau', 'Air', 'Feu', 'Terre', 'Métal',
   ],
 
-  'Food & Drink': [
-    'Pizza', 'Chocolate', 'Coffee', 'Tea', 'Wine', 'Beer', 'Bread', 'Rice',
-    'Pasta', 'Sushi', 'Hamburger', 'Hot_dog', 'Ice_cream', 'Cake', 'Pie',
-    'Apple', 'Banana', 'Orange', 'Strawberry', 'Grape', 'Watermelon',
-    'Potato', 'Tomato', 'Carrot', 'Onion', 'Garlic', 'Pepper',
-    'Chicken', 'Beef', 'Pork', 'Fish', 'Egg', 'Milk', 'Cheese', 'Butter',
-    'Sugar', 'Salt', 'Spice', 'Honey', 'Olive_oil', 'Vinegar',
-    'Restaurant', 'Fast_food', 'Cuisine', 'Cooking', 'Recipe',
+  'Alimentation et boissons': [
+    'Pizza', 'Chocolat', 'Café', 'Thé', 'Vin', 'Bière', 'Pain', 'Riz',
+    'Pâtes', 'Sushi', 'Hamburger', 'Hot-dog', 'Crème_glacée', 'Gâteau', 'Tarte',
+    'Pomme', 'Banane', 'Orange_(fruit)', 'Fraise', 'Raisin', 'Pastèque',
+    'Pomme_de_terre', 'Tomate', 'Carotte', 'Oignon', 'Ail', 'Poivre',
+    'Poulet', 'Bœuf', 'Porc', 'Poisson', 'Œuf_(aliment)', 'Lait', 'Fromage', 'Beurre',
+    'Sucre', 'Sel_alimentaire', 'Épice', 'Miel', 'Huile_d\'olive', 'Vinaigre',
+    'Restaurant', 'Restauration_rapide', 'Cuisine', 'Cuisine_(activité)', 'Recette_de_cuisine',
   ],
 
-  'Technology & Inventions': [
-    'Airplane', 'Automobile', 'Bicycle', 'Telephone', 'Television', 'Radio',
-    'Printing_press', 'Steam_engine', 'Light_bulb', 'Camera', 'Telescope', 'Microscope',
-    'Wheel', 'Compass', 'Gunpowder', 'Paper', 'Clock', 'Refrigerator',
-    'Washing_machine', 'Microwave_oven', 'Air_conditioning', 'Elevator', 'Escalator',
-    'Train', 'Ship', 'Submarine', 'Helicopter', 'Rocket', 'Satellite',
-    'GPS', 'WiFi', 'Bluetooth', 'USB', 'CD', 'DVD', 'Blu-ray',
-    'iPhone', 'Android', 'Windows', 'MacOS', 'Linux', 'Google', 'Amazon', 'Microsoft', 'Apple_Inc.',
+  'Technologie et inventions': [
+    'Avion', 'Automobile', 'Bicyclette', 'Téléphone', 'Télévision', 'Radio',
+    'Imprimerie', 'Machine_à_vapeur', 'Ampoule_électrique', 'Appareil_photographique', 'Télescope', 'Microscope',
+    'Roue', 'Boussole', 'Poudre_à_canon', 'Papier', 'Horloge', 'Réfrigérateur',
+    'Machine_à_laver', 'Four_à_micro-ondes', 'Climatisation', 'Ascenseur', 'Escalier_mécanique',
+    'Train', 'Navire', 'Sous-marin', 'Hélicoptère', 'Fusée_(astronautique)', 'Satellite_artificiel',
+    'Système_de_positionnement_par_satellites', 'Wi-Fi', 'Bluetooth', 'USB', 'Disque_compact', 'DVD', 'Disque_Blu-ray',
+    'IPhone', 'Android', 'Windows', 'MacOS', 'Linux', 'Google', 'Amazon_(entreprise)', 'Microsoft', 'Apple',
   ],
 
-  'Music & Dance': [
-    'Music', 'Song', 'Symphony', 'Opera', 'Jazz', 'Blues', 'Rock_music', 'Pop_music',
-    'Hip_hop', 'Country_music', 'Electronic_music', 'Classical_music', 'Folk_music',
-    'Guitar', 'Piano', 'Violin', 'Drum', 'Trumpet', 'Saxophone', 'Flute',
-    'Orchestra', 'Band', 'Choir', 'Concert', 'Festival', 'Karaoke',
-    'Ballet', 'Salsa', 'Tango', 'Waltz', 'Hip_hop_dance', 'Breakdancing',
+  'Musique et danse': [
+    'Musique', 'Chanson', 'Symphonie', 'Opéra', 'Jazz', 'Blues', 'Rock', 'Musique_pop',
+    'Hip-hop', 'Musique_country', 'Musique_électronique', 'Musique_classique', 'Musique_folk',
+    'Guitare', 'Piano', 'Violon', 'Batterie_(instrument)', 'Trompette', 'Saxophone', 'Flûte',
+    'Orchestre', 'Groupe_de_musique', 'Chœur_(musique)', 'Concert', 'Festival', 'Karaoké',
+    'Ballet', 'Salsa_(danse)', 'Tango_(danse)', 'Valse', 'Danse_hip-hop', 'Break_dance',
   ],
 
-  'Literature & Writing': [
-    'Book', 'Novel', 'Poetry', 'Short_story', 'Essay', 'Biography', 'Autobiography',
-    'Fiction', 'Non-fiction', 'Science_fiction', 'Fantasy', 'Mystery', 'Thriller', 'Romance',
-    'Homer', 'Dante_Alighieri', 'Geoffrey_Chaucer', 'Miguel_de_Cervantes', 'Mark_Twain',
-    'Charles_Dickens', 'Jane_Austen', 'Leo_Tolstoy', 'Fyodor_Dostoevsky', 'James_Joyce',
-    'Ernest_Hemingway', 'F._Scott_Fitzgerald', 'George_Orwell', 'J.R.R._Tolkien', 'C.S._Lewis',
-    'Iliad', 'Odyssey', 'Divine_Comedy', 'Don_Quixote', 'War_and_Peace', 'Moby-Dick',
+  'Littérature et écriture': [
+    'Livre', 'Roman', 'Poésie', 'Nouvelle', 'Essai', 'Biographie', 'Autobiographie',
+    'Fiction', 'Littérature_non_fictionnelle', 'Science-fiction', 'Fantasy', 'Mystère_(fiction)', 'Thriller_(genre)', 'Roman_d\'amour',
+    'Homère', 'Dante_Alighieri', 'Geoffrey_Chaucer', 'Miguel_de_Cervantes', 'Mark_Twain',
+    'Charles_Dickens', 'Jane_Austen', 'Léon_Tolstoï', 'Fiodor_Dostoïevski', 'James_Joyce',
+    'Ernest_Hemingway', 'Francis_Scott_Fitzgerald', 'George_Orwell', 'J._R._R._Tolkien', 'C._S._Lewis',
+    'Iliade', 'Odyssée', 'Divine_Comédie', 'Don_Quichotte', 'Guerre_et_Paix', 'Moby_Dick',
   ],
 
-  'Business & Economy': [
-    'Money', 'Bank', 'Stock_market', 'Cryptocurrency', 'Trade', 'Globalization',
-    'Inflation', 'Recession', 'Depression', 'Unemployment', 'Poverty', 'Wealth',
-    'Company', 'Corporation', 'Business', 'Entrepreneur', 'Marketing', 'Advertising',
-    'Apple_Inc.', 'Microsoft', 'Amazon', 'Google', 'Facebook', 'Tesla,_Inc.', 'SpaceX',
-    'Walmart', 'McDonald\'s', 'Coca-Cola', 'Nike,_Inc.', 'Samsung', 'Toyota',
+  'Économie et entreprises': [
+    'Monnaie', 'Banque', 'Bourse_(économie)', 'Cryptomonnaie', 'Commerce', 'Mondialisation',
+    'Inflation', 'Récession_(économie)', 'Grande_Dépression', 'Chômage', 'Pauvreté', 'Richesse',
+    'Entreprise', 'Société_(droit)', 'Affaires', 'Entrepreneuriat', 'Marketing', 'Publicité',
+    'Apple', 'Microsoft', 'Amazon_(entreprise)', 'Google', 'Facebook', 'Tesla_(automobile)', 'SpaceX',
+    'Walmart', 'McDonald\'s', 'Coca-Cola', 'Nike', 'Samsung', 'Toyota',
   ],
 
-  'Health & Medicine': [
-    'Health', 'Disease', 'Medicine', 'Hospital', 'Doctor', 'Nurse', 'Surgery',
-    'Heart', 'Brain', 'Lung', 'Kidney', 'Liver', 'Stomach', 'Blood', 'Bone',
-    'Headache', 'Fever', 'Cough', 'Pain', 'Diabetes', 'Asthma', 'Allergy',
-    'Depression', 'Anxiety', 'Stress', 'Mental_health', 'Therapy', 'Meditation', 'Yoga',
-    'Nutrition', 'Diet', 'Exercise', 'Fitness', 'Sleep', 'Hygiene',
+  'Santé et médecine': [
+    'Santé', 'Maladie', 'Médecine', 'Hôpital', 'Médecin', 'Infirmier', 'Chirurgie',
+    'Cœur', 'Cerveau', 'Poumon', 'Rein', 'Foie', 'Estomac', 'Sang', 'Os',
+    'Céphalée', 'Fièvre', 'Toux', 'Douleur', 'Diabète', 'Asthme', 'Allergie',
+    'Dépression_(psychiatrie)', 'Anxiété', 'Stress', 'Santé_mentale', 'Thérapie', 'Méditation', 'Yoga',
+    'Nutrition', 'Régime_alimentaire', 'Exercice_physique', 'Forme_physique', 'Sommeil', 'Hygiène',
   ],
 };
 
@@ -198,4 +199,32 @@ export const getPageCategory = (pageTitle: string): string | null => {
     }
   }
   return null;
+};
+
+/**
+ * Cached, deduplicated, flattened array of all popular pages
+ * Computed once at module load for O(1) random access
+ */
+const ALL_POPULAR_PAGES_DEDUPLICATED: string[] = (() => {
+  const pageSet = new Set<string>();
+  Object.values(POPULAR_PAGES_BY_CATEGORY).forEach(pages => {
+    pages.forEach(page => pageSet.add(page));
+  });
+  return Array.from(pageSet);
+})();
+
+/**
+ * Get a random popular page from the entire deduplicated collection
+ * Returns just the page title (not a full WikiPageSummary)
+ */
+export const getRandomPopularPage = (): string => {
+  const index = Math.floor(Math.random() * ALL_POPULAR_PAGES_DEDUPLICATED.length);
+  return ALL_POPULAR_PAGES_DEDUPLICATED[index];
+};
+
+/**
+ * Get the count of unique popular pages (after deduplication)
+ */
+export const getUniquePopularPageCount = (): number => {
+  return ALL_POPULAR_PAGES_DEDUPLICATED.length;
 };

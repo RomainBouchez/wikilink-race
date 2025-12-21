@@ -6,6 +6,11 @@ export enum GameStatus {
   ERROR = 'ERROR'
 }
 
+export enum GameMode {
+  DAILY = 'DAILY',
+  TRAINING = 'TRAINING'
+}
+
 export interface WikiPageSummary {
   title: string;
   displaytitle: string;
@@ -20,6 +25,7 @@ export interface WikiPageSummary {
 
 export interface GameState {
   status: GameStatus;
+  mode: GameMode | null;
   startPage: WikiPageSummary | null;
   targetPage: WikiPageSummary | null;
   currentPage: WikiPageSummary | null;
@@ -28,6 +34,7 @@ export interface GameState {
   startTime: number | null;
   endTime: number | null;
   error: string | null;
+  dailyChallengeId?: string; // For daily mode
 }
 
 export interface HistoryItem {
@@ -44,4 +51,15 @@ export interface LeaderboardEntry {
   targetPage: string;
   path: string[];
   timestamp: number;
+  mode: GameMode;
+  dailyChallengeId?: string;
+}
+
+export interface DailyChallenge {
+  id: string;
+  date: string; // YYYY-MM-DD format
+  startPage: string;
+  targetPage: string;
+  startPageData?: WikiPageSummary;
+  targetPageData?: WikiPageSummary;
 }
