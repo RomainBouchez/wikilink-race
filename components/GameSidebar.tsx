@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { WikiPageSummary } from '../types';
-import { Flag, MousePointer2, Clock, Map, ChevronRight, Home } from 'lucide-react';
+import { WikiPageSummary, GameMode, LobbyState, PlayerStatus } from '../types';
+import { Flag, MousePointer2, Clock, Map, ChevronRight, Home, Users, Trophy } from 'lucide-react';
 
 interface GameSidebarProps {
   targetPage: WikiPageSummary;
@@ -11,6 +11,9 @@ interface GameSidebarProps {
   isPlaying: boolean;
   onNavigateToHistoryPage?: (title: string, index: number) => void;
   onGoHome?: () => void;
+  mode?: GameMode | null;
+  lobbyState?: LobbyState | null;
+  currentUserId?: string | null;
 }
 
 export const GameSidebar: React.FC<GameSidebarProps> = ({
@@ -22,6 +25,9 @@ export const GameSidebar: React.FC<GameSidebarProps> = ({
   isPlaying,
   onNavigateToHistoryPage,
   onGoHome,
+  mode,
+  lobbyState,
+  currentUserId,
 }) => {
   const [elapsed, setElapsed] = useState(0);
 
@@ -80,6 +86,55 @@ export const GameSidebar: React.FC<GameSidebarProps> = ({
           <div className="text-xl font-mono font-bold text-blue-600">{formatTime(elapsed)}</div>
         </div>
       </div>
+
+      {/* Multiplayer Players List */}
+      {mode === GameMode.MULTIPLAYER && lobbyState && (
+        <div className="border-b border-gray-200 p-4 bg-purple-50/30">
+          <div className="flex items-center text-purple-600 mb-3">
+            <Users className="w-4 h-4 mr-2" />
+            <span className="text-xs uppercase font-bold tracking-wider">Players</span>
+          </div>
+          <div className="space-y-2">
+            {Object.entries(lobbyState.players)
+              .sort(([, a], [, b]) => {
+                // Sort by finish time (winners first), then by clicks
+                if (a.status === PlayerStatus.FINISHED && b.status !== PlayerStatus.FINISHED) return -1;
+                if (a.status !== PlayerStatus.FINISHED && b.status === PlayerStatus.FINISHED) return 1;
+                if (a.status === PlayerStatus.FINISHED && b.status === PlayerStatus.FINISHED) {
+                  return (a.finishTime || 0) - (b.finishTime || 0);
+                }
+                return a.clicks - b.clicks;
+              })
+              .map(([uid, player]) => (
+                <div
+                  key={uid}
+                  className={`flex items-center justify-between text-sm p-2 rounded ${
+                    uid === currentUserId ? 'bg-purple-100 border border-purple-200' : 'bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {player.photoURL ? (
+                      <img src={player.photoURL} className="w-6 h-6 rounded-full shrink-0" alt="" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0">
+                        {player.displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className={`truncate ${uid === currentUserId ? 'font-bold text-purple-900' : 'text-gray-700'}`}>
+                      {player.displayName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-gray-500">{player.clicks}</span>
+                    {player.status === PlayerStatus.FINISHED && (
+                      <Trophy className="w-4 h-4 text-yellow-500" />
+                    )}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* Path - Prend tout l'espace restant */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">

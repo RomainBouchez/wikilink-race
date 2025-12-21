@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameStatus, GameState, WikiPageSummary, GameMode, User } from './types';
+import { GameStatus, GameState, WikiPageSummary, GameMode, User, LobbyState, LobbyStatus, PlayerStatus } from './types';
 import { fetchRandomPage, fetchPageSummary, fetchHybridPage } from './services/wikiService';
 import { leaderboardService } from './services/leaderboardService';
 import { dailyChallengeService } from './services/dailyChallengeService';
 import { dailyProgressService } from './services/dailyProgressService';
+import { multiplayerService } from './services/multiplayerService';
 import { onAuthStateChanged, mapFirebaseUser } from './services/authService';
 import { createOrUpdateUserProfile } from './services/firestoreService';
 import { hasLocalData } from './services/migrationService';
@@ -15,6 +16,8 @@ import { ModeSelection } from './components/ModeSelection';
 import { AuthButton } from './components/AuthButton';
 import { AuthModal } from './components/AuthModal';
 import { MigrationPrompt } from './components/MigrationPrompt';
+import { MultiplayerLobbyModal } from './components/MultiplayerLobbyModal';
+import { LobbyWaitingRoom } from './components/LobbyWaitingRoom';
 import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search, Map, ChevronRight, Home } from 'lucide-react';
 const INITIAL_STATE: GameState = {
   status: GameStatus.IDLE,
@@ -39,6 +42,11 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
+
+  // Multiplayer state
+  const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
+  const [showLobbyModal, setShowLobbyModal] = useState(false);
+  const [multiplayerAction, setMultiplayerAction] = useState<'create' | 'join' | null>(null);
 
   // Listen to authentication state changes
   useEffect(() => {
@@ -140,12 +148,78 @@ function App() {
     }
   }, [gameState.clicks, gameState.currentPage?.title, user]);
 
+  // Subscribe to lobby updates
+  useEffect(() => {
+    if (!lobbyState || !lobbyState.roomCode) return;
+
+    const unsubscribe = multiplayerService.subscribeToLobby(
+      lobbyState.roomCode,
+      (lobby) => {
+        if (!lobby) {
+          // Lobby deleted
+          setLobbyState(null);
+          setGameState(INITIAL_STATE);
+          return;
+        }
+
+        setLobbyState(lobby);
+
+        // If the game starts
+        if (lobby.status === LobbyStatus.PLAYING && gameState.status === GameStatus.IDLE) {
+          initMultiplayerGame(lobby);
+        }
+
+        // If someone won
+        if (lobby.winnerId && gameState.status === GameStatus.PLAYING) {
+          setGameState(prev => ({
+            ...prev,
+            status: GameStatus.WON,
+            endTime: Date.now()
+          }));
+        }
+      }
+    );
+
+    return () => unsubscribe();
+  }, [lobbyState?.roomCode, gameState.status]);
+
   // Return to home screen
   const goHome = useCallback(() => {
+    // Leave lobby if in one
+    if (lobbyState && user) {
+      multiplayerService.leaveLobby(lobbyState.roomCode, user.uid);
+    }
+    setLobbyState(null);
     setGameState(INITIAL_STATE);
-  }, []);
+  }, [lobbyState, user]);
 
-  const initGame = async (mode: GameMode) => {
+  // Initialize multiplayer game
+  const initMultiplayerGame = async (lobby: LobbyState) => {
+    if (!lobby.startPageData || !lobby.targetPageData) return;
+
+    setGameState({
+      status: GameStatus.PLAYING,
+      mode: GameMode.MULTIPLAYER,
+      startPage: lobby.startPageData,
+      targetPage: lobby.targetPageData,
+      currentPage: lobby.startPageData,
+      history: [lobby.startPageData.title],
+      clicks: 0,
+      startTime: Date.now(),
+      endTime: null,
+      error: null,
+      lobbyCode: lobby.roomCode,
+    });
+  };
+
+  const initGame = async (mode: GameMode, action?: 'create' | 'join') => {
+    // Handle multiplayer mode
+    if (mode === GameMode.MULTIPLAYER && action) {
+      setMultiplayerAction(action);
+      setShowLobbyModal(true);
+      return;
+    }
+
     setGameState(prev => ({ ...prev, status: GameStatus.LOADING, error: null, mode }));
 
     try {
@@ -240,6 +314,27 @@ function App() {
 
     setGameState(prev => {
         const newHistory = [...prev.history, title];
+        const newClicks = prev.clicks + 1;
+
+        // Sync with Firestore if multiplayer
+        if (prev.mode === GameMode.MULTIPLAYER && prev.lobbyCode && user) {
+          multiplayerService.updatePlayerProgress(
+            prev.lobbyCode,
+            user.uid,
+            title,
+            newClicks,
+            newHistory
+          );
+
+          // If victory
+          if (isWin) {
+            multiplayerService.finishPlayer(
+              prev.lobbyCode,
+              user.uid,
+              Date.now()
+            );
+          }
+        }
 
         if (isWin) {
             return {
@@ -247,7 +342,7 @@ function App() {
                 status: GameStatus.WON,
                 currentPage: pageSummary,
                 history: newHistory,
-                clicks: prev.clicks + 1,
+                clicks: newClicks,
                 endTime: Date.now(),
             };
         }
@@ -256,11 +351,11 @@ function App() {
             ...prev,
             currentPage: pageSummary,
             history: newHistory,
-            clicks: prev.clicks + 1,
+            clicks: newClicks,
         };
     });
 
-  }, [gameState.status, gameState.targetPage]);
+  }, [gameState.status, gameState.targetPage, gameState.mode, gameState.lobbyCode, user]);
 
   const handleNavigateToHistoryPage = useCallback(async (title: string, historyIndex: number) => {
     if (gameState.status !== GameStatus.PLAYING) return;
@@ -365,6 +460,8 @@ function App() {
             <ModeSelection
               onSelectMode={initGame}
               onViewLeaderboard={() => setShowLeaderboard(true)}
+              user={user}
+              onShowAuthModal={() => setShowAuthModal(true)}
             />
 
             <div className="text-center text-xs text-gray-400 mt-4">
@@ -377,6 +474,45 @@ function App() {
             onClose={() => setShowLeaderboard(false)}
             highlightEntryId={lastSavedEntryId || undefined}
             user={user}
+          />
+        )}
+
+        {/* Multiplayer Lobby Modal */}
+        {showLobbyModal && (
+          <MultiplayerLobbyModal
+            action={multiplayerAction}
+            user={user}
+            onClose={() => {
+              setShowLobbyModal(false);
+              setMultiplayerAction(null);
+            }}
+            onLobbyCreated={(lobby) => {
+              setLobbyState(lobby);
+              setShowLobbyModal(false);
+            }}
+            onLobbyJoined={(lobby) => {
+              setLobbyState(lobby);
+              setShowLobbyModal(false);
+            }}
+          />
+        )}
+
+        {/* Lobby Waiting Room */}
+        {lobbyState && lobbyState.status === LobbyStatus.WAITING && (
+          <LobbyWaitingRoom
+            lobby={lobbyState}
+            currentUser={user}
+            onStartGame={() => {
+              if (lobbyState.createdBy === user?.uid) {
+                multiplayerService.startGame(lobbyState.roomCode);
+              }
+            }}
+            onLeave={() => {
+              if (user) {
+                multiplayerService.leaveLobby(lobbyState.roomCode, user.uid);
+              }
+              setLobbyState(null);
+            }}
           />
         )}
       </>
@@ -613,12 +749,15 @@ function App() {
             isPlaying={gameState.status === GameStatus.PLAYING}
             onNavigateToHistoryPage={handleNavigateToHistoryPage}
             onGoHome={goHome}
+            mode={gameState.mode}
+            lobbyState={lobbyState}
+            currentUserId={user?.uid}
           />
         )}
       </aside>
       
       {/* Overlay pour fermer en cliquant à côté (Optionnel mais recommandé) */}
-      <div 
+      <div
         id="sidebar-overlay"
         className="fixed inset-0 bg-black/20 z-40 lg:hidden hidden"
         onClick={() => {

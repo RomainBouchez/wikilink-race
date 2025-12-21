@@ -8,7 +8,8 @@ export enum GameStatus {
 
 export enum GameMode {
   DAILY = 'DAILY',
-  TRAINING = 'TRAINING'
+  TRAINING = 'TRAINING',
+  MULTIPLAYER = 'MULTIPLAYER'
 }
 
 export interface WikiPageSummary {
@@ -35,6 +36,7 @@ export interface GameState {
   endTime: number | null;
   error: string | null;
   dailyChallengeId?: string; // For daily mode
+  lobbyCode?: string; // For multiplayer mode
 }
 
 export interface HistoryItem {
@@ -110,4 +112,46 @@ export interface UserStats {
 // Extended game entry with score calculation for Firestore
 export interface GameEntry extends LeaderboardEntry {
   score: number; // Calculated: clicks * 10 + timeSeconds
+}
+
+// Multiplayer types
+export enum LobbyStatus {
+  WAITING = 'waiting',
+  PLAYING = 'playing',
+  FINISHED = 'finished'
+}
+
+export enum PlayerStatus {
+  READY = 'ready',
+  PLAYING = 'playing',
+  FINISHED = 'finished',
+  ABANDONED = 'abandoned'
+}
+
+export interface PlayerState {
+  displayName: string;
+  photoURL: string | null;
+  status: PlayerStatus;
+  currentPage: string | null;
+  clicks: number;
+  history: string[];
+  finishTime: number | null;
+  joinedAt: number;
+}
+
+export interface LobbyState {
+  roomCode: string;
+  createdBy: string;
+  createdByName: string;
+  startPage: string;
+  targetPage: string;
+  startPageData?: WikiPageSummary;
+  targetPageData?: WikiPageSummary;
+  status: LobbyStatus;
+  maxPlayers: number;
+  createdAt: number;
+  startedAt: number | null;
+  winnerId: string | null;
+  winnerName: string | null;
+  players: Record<string, PlayerState>;
 }

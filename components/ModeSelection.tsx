@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { GameMode } from '../types';
 import { Button } from './Button';
-import { Calendar, Dumbbell, Trophy, Clock } from 'lucide-react';
+import { Calendar, Dumbbell, Trophy, Clock, Users } from 'lucide-react';
 import { dailyChallengeService } from '../services/dailyChallengeService';
 
 interface ModeSelectionProps {
-  onSelectMode: (mode: GameMode) => void;
+  onSelectMode: (mode: GameMode, action?: 'create' | 'join') => void;
   onViewLeaderboard: () => void;
+  user?: any;
+  onShowAuthModal?: () => void;
 }
 
-export const ModeSelection: React.FC<ModeSelectionProps> = ({ onSelectMode, onViewLeaderboard }) => {
+export const ModeSelection: React.FC<ModeSelectionProps> = ({ onSelectMode, onViewLeaderboard, user, onShowAuthModal }) => {
   const [timeRemaining, setTimeRemaining] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [hasCompletedDaily, setHasCompletedDaily] = useState(false);
 
@@ -19,6 +21,13 @@ export const ModeSelection: React.FC<ModeSelectionProps> = ({ onSelectMode, onVi
     const updateTimer = () => {
       const time = dailyChallengeService.getTimeUntilNextChallenge();
       setTimeRemaining(time);
+
+      // Reset completion status when midnight passes
+      if (time.hours === 23 && time.minutes === 59 && time.seconds === 59) {
+        setTimeout(() => {
+          setHasCompletedDaily(dailyChallengeService.hasCompletedToday());
+        }, 1000);
+      }
     };
 
     updateTimer();
@@ -28,7 +37,7 @@ export const ModeSelection: React.FC<ModeSelectionProps> = ({ onSelectMode, onVi
   }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       {/* Daily Challenge Card */}
       <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-xl p-8 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-[1.02] relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full -mr-20 -mt-20"></div>
@@ -119,8 +128,68 @@ export const ModeSelection: React.FC<ModeSelectionProps> = ({ onSelectMode, onVi
         </div>
       </div>
 
-      {/* Leaderboard Button - Spanning both columns */}
-      <div className="md:col-span-2">
+      {/* Multiplayer Mode Card */}
+      <div className="bg-gradient-to-br from-purple-600 via-purple-700 to-pink-800 rounded-xl p-8 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-[1.02] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full -mr-20 -mt-20"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-5 rounded-full -ml-16 -mb-16"></div>
+        <div className="relative z-10">
+          <div className="flex items-center mb-4">
+            <Users className="w-8 h-8 mr-3" />
+            <h2 className="text-2xl font-bold">Multiplayer</h2>
+          </div>
+
+          <p className="text-purple-100 mb-6 text-sm">
+            Race against friends in real-time! Create or join a lobby.
+          </p>
+
+          <div className="bg-white bg-opacity-10 rounded-lg p-4 mb-6">
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start">
+                <span className="mr-2">✓</span>
+                <span>2-10 players per lobby</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">✓</span>
+                <span>Real-time competition</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">✓</span>
+                <span>6-character room code</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                if (!user) {
+                  onShowAuthModal?.();
+                } else {
+                  onSelectMode(GameMode.MULTIPLAYER, 'create');
+                }
+              }}
+              className="flex-1 bg-white !text-purple-600 hover:bg-purple-50 hover:!text-purple-700 font-bold py-3 text-base shadow-lg hover:shadow-xl transition-all"
+            >
+              Create
+            </Button>
+            <Button
+              onClick={() => {
+                if (!user) {
+                  onShowAuthModal?.();
+                } else {
+                  onSelectMode(GameMode.MULTIPLAYER, 'join');
+                }
+              }}
+              className="flex-1 bg-white !text-purple-600 hover:bg-purple-50 hover:!text-purple-700 font-bold py-3 text-base shadow-lg hover:shadow-xl transition-all"
+            >
+              Join
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Leaderboard Button - Spanning all three columns */}
+      <div className="md:col-span-3">
         <Button
           variant="secondary"
           onClick={onViewLeaderboard}

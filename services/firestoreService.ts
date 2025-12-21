@@ -15,7 +15,8 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { db } from '../firebase.config';
-import type { User, UserProfile, GameEntry, DailyChallenge, GameMode, DailyProgressState } from '../types';
+import type { User, UserProfile, GameEntry, DailyChallenge, GameMode, DailyProgressState, LobbyState } from '../types';
+import { onSnapshot } from 'firebase/firestore';
 
 /**
  * Create or update a user profile in Firestore
@@ -326,3 +327,89 @@ export async function clearDailyProgress(
   const progressRef = doc(db, 'users', userId, 'daily_progress', challengeId);
   await deleteDoc(progressRef);
 }
+
+/**
+ * Create a multiplayer lobby
+ */
+export async function createMultiplayerLobby(lobbyData: LobbyState): Promise<void> {
+  const lobbyRef = doc(db, 'lobbies', lobbyData.roomCode);
+  await setDoc(lobbyRef, {
+    ...lobbyData,
+    createdAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Get a lobby by room code
+ */
+export async function getLobby(roomCode: string): Promise<LobbyState | null> {
+  const lobbyRef = doc(db, 'lobbies', roomCode);
+  const lobbyDoc = await getDoc(lobbyRef);
+
+  if (!lobbyDoc.exists()) {
+    return null;
+  }
+
+  const data = lobbyDoc.data();
+  return {
+    ...data,
+    createdAt: ensureMillis(data.createdAt) || Date.now(),
+    startedAt: ensureMillis(data.startedAt),
+  } as LobbyState;
+}
+
+/**
+ * Update lobby state
+ */
+export async function updateLobby(
+  roomCode: string,
+  updates: Partial<LobbyState>
+): Promise<void> {
+  const lobbyRef = doc(db, 'lobbies', roomCode);
+  await updateDoc(lobbyRef, updates);
+}
+
+/**
+ * Subscribe to lobby changes (real-time)
+ */
+export function subscribeToLobby(
+  roomCode: string,
+  callback: (lobby: LobbyState | null) => void
+): () => void {
+  const lobbyRef = doc(db, 'lobbies', roomCode);
+
+  return onSnapshot(lobbyRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.data();
+      callback({
+        ...data,
+        createdAt: ensureMillis(data.createdAt) || Date.now(),
+        startedAt: ensureMillis(data.startedAt),
+      } as LobbyState);
+    } else {
+      callback(null);
+    }
+  });
+}
+
+/**
+ * Delete a lobby
+ */
+export async function deleteLobby(roomCode: string): Promise<void> {
+  const lobbyRef = doc(db, 'lobbies', roomCode);
+  await deleteDoc(lobbyRef);
+}
+
+
+/**
+ * Utilitaire pour convertir en toute sécurité les timestamps Firestore ou nombres en millisecondes
+ */
+const ensureMillis = (date: any): number | null => {
+  if (!date) return null;
+  // Si c'est déjà un nombre (Date.now())
+  if (typeof date === 'number') return date;
+  // Si c'est un Timestamp Firestore
+  if (date && typeof date.toMillis === 'function') return date.toMillis();
+  // Repli sur Date
+  return Date.now();
+};
