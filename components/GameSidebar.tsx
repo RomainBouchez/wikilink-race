@@ -9,6 +9,7 @@ interface GameSidebarProps {
   clicks: number;
   startTime: number | null;
   isPlaying: boolean;
+  onNavigateToHistoryPage?: (title: string, index: number) => void;
 }
 
 export const GameSidebar: React.FC<GameSidebarProps> = ({
@@ -18,6 +19,7 @@ export const GameSidebar: React.FC<GameSidebarProps> = ({
   clicks,
   startTime,
   isPlaying,
+  onNavigateToHistoryPage,
 }) => {
   const [elapsed, setElapsed] = useState(0);
 
@@ -96,7 +98,10 @@ export const GameSidebar: React.FC<GameSidebarProps> = ({
         
         <div className="space-y-3">
              {/* Start Node */}
-            <div className="flex items-start group">
+            <div
+                className={`flex items-start group ${onNavigateToHistoryPage ? 'cursor-pointer hover:bg-gray-100 rounded-lg p-2 -m-2 transition-colors' : ''}`}
+                onClick={() => onNavigateToHistoryPage?.(startPage.title, 0)}
+            >
                 <div className="flex flex-col items-center mr-3">
                     <div className="w-2.5 h-2.5 rounded-full bg-green-500 ring-4 ring-green-100"></div>
                     <div className="w-0.5 h-full bg-gray-200 my-1"></div>
@@ -107,19 +112,32 @@ export const GameSidebar: React.FC<GameSidebarProps> = ({
             </div>
 
             {/* History Nodes */}
-            {history.slice(1).map((title, index) => (
-                <div key={index} className="flex items-start animate-fade-in-up">
-                    <div className="flex flex-col items-center mr-3">
-                        <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
-                        {(index !== history.length - 2) && (
-                             <div className="w-0.5 h-full bg-gray-200 my-1"></div>
-                        )}
+            {history.slice(1).map((title, index) => {
+                const isLastItem = index === history.length - 2;
+                const actualIndex = index + 1; // +1 because we're slicing from index 1
+
+                return (
+                    <div
+                        key={index}
+                        className={`flex items-start animate-fade-in-up ${
+                            !isLastItem && onNavigateToHistoryPage
+                                ? 'cursor-pointer hover:bg-gray-100 rounded-lg p-2 -m-2 transition-colors'
+                                : ''
+                        }`}
+                        onClick={() => !isLastItem && onNavigateToHistoryPage?.(title, actualIndex)}
+                    >
+                        <div className="flex flex-col items-center mr-3">
+                            <div className={`w-2.5 h-2.5 rounded-full ${isLastItem ? 'bg-blue-500 ring-4 ring-blue-100' : 'bg-gray-300'}`}></div>
+                            {!isLastItem && (
+                                 <div className="w-0.5 h-full bg-gray-200 my-1"></div>
+                            )}
+                        </div>
+                         <div className="text-sm text-gray-600 pb-3 truncate max-w-[180px]">
+                            {title.replace(/_/g, ' ')}
+                        </div>
                     </div>
-                     <div className="text-sm text-gray-600 pb-3 truncate max-w-[180px]">
-                        {title.replace(/_/g, ' ')}
-                    </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
       </div>
 

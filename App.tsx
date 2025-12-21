@@ -76,10 +76,10 @@ function App() {
     // Normalizing titles (Wiki titles are case sensitive on the first letter usually, but spaces become underscores)
     const normalizedTarget = gameState.targetPage?.title.replace(/ /g, '_');
     const normalizedCurrent = title.replace(/ /g, '_');
-    
+
     // We update state optimistically for the navigation, but we need to fetch the summary for the sidebar
     // Note: WikiViewer handles the HTML fetching independently based on the title prop.
-    
+
     // Check Win Condition
     // We decodeURIComponent because title from href might be encoded, but target title from API is usually clean text.
     // However, API titles have spaces, hrefs have underscores.
@@ -95,7 +95,7 @@ function App() {
 
     setGameState(prev => {
         const newHistory = [...prev.history, title];
-        
+
         if (isWin) {
             return {
                 ...prev,
@@ -116,6 +116,27 @@ function App() {
     });
 
   }, [gameState.status, gameState.targetPage]);
+
+  const handleNavigateToHistoryPage = useCallback(async (title: string, historyIndex: number) => {
+    if (gameState.status !== GameStatus.PLAYING) return;
+
+    // Fetch the page summary for the historical page
+    let pageSummary: WikiPageSummary = { title: title, displaytitle: title };
+    try {
+         pageSummary = await fetchPageSummary(title);
+    } catch (e) {
+        console.warn("Could not fetch summary for", title);
+    }
+
+    // Navigate back to this point in history by truncating the history array
+    // and incrementing clicks (going back costs 1 click)
+    setGameState(prev => ({
+        ...prev,
+        currentPage: pageSummary,
+        history: prev.history.slice(0, historyIndex + 1),
+        clicks: prev.clicks + 1,
+    }));
+  }, [gameState.status]);
 
   // View: Welcome Screen
   if (gameState.status === GameStatus.IDLE || gameState.status === GameStatus.ERROR) {
@@ -339,6 +360,7 @@ function App() {
                 clicks={gameState.clicks}
                 startTime={gameState.startTime}
                 isPlaying={gameState.status === GameStatus.PLAYING}
+                onNavigateToHistoryPage={handleNavigateToHistoryPage}
             />
          )}
       </aside>
