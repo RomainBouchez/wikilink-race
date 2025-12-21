@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LeaderboardEntry, GameMode } from '../types';
+import { LeaderboardEntry, GameMode, User as UserType } from '../types';
 import { leaderboardService } from '../services/leaderboardService';
 import { Trophy, Clock, MousePointerClick, Calendar, User, Download, Upload, Trash2, Dumbbell } from 'lucide-react';
 import { Button } from './Button';
@@ -8,27 +8,44 @@ interface LeaderboardProps {
   onClose?: () => void;
   highlightEntryId?: string;
   defaultMode?: GameMode;
+  user?: UserType | null;
 }
 
 type ViewMode = 'all' | 'route';
+type ScopeMode = 'global' | 'personal';
 
-export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntryId, defaultMode }) => {
+export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntryId, defaultMode, user }) => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('all');
+  const [scopeMode, setScopeMode] = useState<ScopeMode>('global');
   const [selectedRoute, setSelectedRoute] = useState<{ start: string; target: string } | null>(null);
   const [selectedMode, setSelectedMode] = useState<GameMode | 'all'>(defaultMode || 'all');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadEntries();
-  }, [viewMode, selectedRoute, selectedMode]);
+  }, [viewMode, selectedRoute, selectedMode, scopeMode]);
 
-  const loadEntries = () => {
-    const mode = selectedMode === 'all' ? undefined : selectedMode;
+  const loadEntries = async () => {
+    setLoading(true);
+    try {
+      const mode = selectedMode === 'all' ? undefined : selectedMode;
 
-    if (viewMode === 'route' && selectedRoute) {
-      setEntries(leaderboardService.getEntriesForRoute(selectedRoute.start, selectedRoute.target, mode));
-    } else {
-      setEntries(leaderboardService.getTopEntries(50, mode));
+      if (scopeMode === 'personal' && user) {
+        // Load user's personal games
+        const userGames = await leaderboardService.getUserGames(user.uid, 50);
+        setEntries(userGames);
+      } else if (viewMode === 'route' && selectedRoute) {
+        const routeEntries = await leaderboardService.getEntriesForRoute(selectedRoute.start, selectedRoute.target, mode);
+        setEntries(routeEntries);
+      } else {
+        const topEntries = await leaderboardService.getTopEntries(50, mode);
+        setEntries(topEntries);
+      }
+    } catch (error) {
+      console.error('Failed to load leaderboard entries:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -122,6 +139,26 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ onClose, highlightEntr
 
         {/* Controls */}
         <div className="p-4 border-b bg-gray-50 space-y-3">
+          {/* Scope Filter (Global/Personal) - Only show if user is authenticated */}
+          {user && (
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={scopeMode === 'global' ? 'primary' : 'secondary'}
+                onClick={() => setScopeMode('global')}
+                className="text-sm py-2"
+              >
+                Leaderboard Global
+              </Button>
+              <Button
+                variant={scopeMode === 'personal' ? 'primary' : 'secondary'}
+                onClick={() => setScopeMode('personal')}
+                className="text-sm py-2 flex items-center"
+              >
+                <User className="w-4 h-4 mr-1" /> Mes Parties
+              </Button>
+            </div>
+          )}
+
           {/* Game Mode Filter */}
           <div className="flex gap-2 flex-wrap">
             <Button

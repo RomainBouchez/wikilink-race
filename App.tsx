@@ -1,13 +1,19 @@
-import React, { useState, useCallback } from 'react';
-import { GameStatus, GameState, WikiPageSummary, GameMode } from './types';
+import React, { useState, useCallback, useEffect } from 'react';
+import { GameStatus, GameState, WikiPageSummary, GameMode, User } from './types';
 import { fetchRandomPage, fetchPageSummary, fetchHybridPage } from './services/wikiService';
 import { leaderboardService } from './services/leaderboardService';
 import { dailyChallengeService } from './services/dailyChallengeService';
+import { onAuthStateChanged, mapFirebaseUser } from './services/authService';
+import { createOrUpdateUserProfile } from './services/firestoreService';
+import { hasLocalData } from './services/migrationService';
 import { WikiViewer } from './components/WikiViewer';
 import { GameSidebar } from './components/GameSidebar';
 import { Button } from './components/Button';
 import { Leaderboard } from './components/Leaderboard';
 import { ModeSelection } from './components/ModeSelection';
+import { AuthButton } from './components/AuthButton';
+import { AuthModal } from './components/AuthModal';
+import { MigrationPrompt } from './components/MigrationPrompt';
 import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search } from 'lucide-react';
 
 const INITIAL_STATE: GameState = {
@@ -27,6 +33,44 @@ function App() {
   const [gameState, setGameState] = useState<GameState>(INITIAL_STATE);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [lastSavedEntryId, setLastSavedEntryId] = useState<string | null>(null);
+
+  // Authentication state
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
+
+  // Listen to authentication state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        const mappedUser = mapFirebaseUser(firebaseUser);
+        setUser(mappedUser);
+
+        // Create/update user profile in Firestore
+        try {
+          await createOrUpdateUserProfile(mappedUser);
+        } catch (error) {
+          console.error('Failed to create user profile:', error);
+        }
+
+        // Configure leaderboard service for Firestore mode
+        leaderboardService.configure(true, firebaseUser.uid);
+
+        // Check if there's local data to migrate
+        if (hasLocalData()) {
+          setShowMigrationPrompt(true);
+        }
+      } else {
+        setUser(null);
+        // Configure leaderboard service for localStorage mode (guest)
+        leaderboardService.configure(false, null);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const initGame = async (mode: GameMode) => {
     setGameState(prev => ({ ...prev, status: GameStatus.LOADING, error: null, mode }));
@@ -167,7 +211,30 @@ function App() {
   if (gameState.status === GameStatus.IDLE || gameState.status === GameStatus.ERROR) {
     return (
       <>
+        {/* Auth Modal */}
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={() => {
+              console.log('Authentication successful!');
+            }}
+          />
+        )}
+
+        {/* Migration Prompt */}
+        {showMigrationPrompt && user && (
+          <MigrationPrompt
+            userId={user.uid}
+            onClose={() => setShowMigrationPrompt(false)}
+          />
+        )}
+
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-6 font-sans">
+          {/* Auth Button in top right */}
+          <div className="fixed top-4 right-4 z-10">
+            <AuthButton user={user} onSignInClick={() => setShowAuthModal(true)} />
+          </div>
+
           <div className="max-w-4xl w-full">
             {/* Header */}
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
@@ -233,6 +300,7 @@ function App() {
           <Leaderboard
             onClose={() => setShowLeaderboard(false)}
             highlightEntryId={lastSavedEntryId || undefined}
+            user={user}
           />
         )}
       </>
@@ -256,28 +324,48 @@ function App() {
         ? Math.floor((gameState.endTime - gameState.startTime) / 1000)
         : 0;
 
-      const handleSaveScore = () => {
-        const playerName = prompt('Enter your name for the leaderboard:');
-        if (!playerName || playerName.trim() === '') return;
+      const handleSaveScore = async () => {
+        // Determine player name
+        let playerName: string;
 
-        const entry = leaderboardService.saveScore({
-          playerName: playerName.trim(),
-          clicks: gameState.clicks,
-          timeSeconds: timeTaken,
-          startPage: gameState.startPage!.title,
-          targetPage: gameState.targetPage!.title,
-          path: gameState.history,
-          mode: gameState.mode!,
-          dailyChallengeId: gameState.dailyChallengeId,
-        });
-
-        // Mark daily challenge as completed
-        if (gameState.mode === GameMode.DAILY) {
-          dailyChallengeService.markTodayCompleted();
+        if (user) {
+          // Authenticated user - use their display name or pseudo
+          playerName = user.displayName || user.pseudo || 'Joueur Anonyme';
+        } else {
+          // Guest mode - ask for name
+          const name = prompt('Entrez votre nom pour le leaderboard:');
+          if (!name || name.trim() === '') return;
+          playerName = name.trim();
         }
 
-        setLastSavedEntryId(entry.id);
-        setShowLeaderboard(true);
+        try {
+          const entry = await leaderboardService.saveScore({
+            playerName,
+            clicks: gameState.clicks,
+            timeSeconds: timeTaken,
+            startPage: gameState.startPage!.title,
+            targetPage: gameState.targetPage!.title,
+            path: gameState.history,
+            mode: gameState.mode!,
+            dailyChallengeId: gameState.dailyChallengeId,
+          });
+
+          // Mark daily challenge as completed
+          if (gameState.mode === GameMode.DAILY) {
+            dailyChallengeService.markTodayCompleted();
+          }
+
+          setLastSavedEntryId(entry.id);
+          setShowLeaderboard(true);
+
+          // Show success message for authenticated users
+          if (user) {
+            console.log('Score sauvegardé dans le cloud!');
+          }
+        } catch (error) {
+          console.error('Failed to save score:', error);
+          alert('Erreur lors de la sauvegarde du score. Veuillez réessayer.');
+        }
       };
 
       return (
@@ -345,6 +433,7 @@ function App() {
             <Leaderboard
               onClose={() => setShowLeaderboard(false)}
               highlightEntryId={lastSavedEntryId || undefined}
+              user={user}
             />
           )}
         </>

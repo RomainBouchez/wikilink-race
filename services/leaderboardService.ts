@@ -1,20 +1,69 @@
-import { LeaderboardEntry, GameMode } from '../types';
+import { LeaderboardEntry, GameMode, GameEntry } from '../types';
+import * as firestoreService from './firestoreService';
 
 const STORAGE_KEY = 'wikilink_race_leaderboard';
 const MAX_ENTRIES = 50;
 
-export const leaderboardService = {
+interface ServiceConfig {
+  useFirestore: boolean;
+  userId: string | null;
+}
+
+class LeaderboardService {
+  private config: ServiceConfig = {
+    useFirestore: false,
+    userId: null
+  };
+
+  /**
+   * Configure the service to use Firestore or localStorage
+   */
+  configure(useFirestore: boolean, userId: string | null): void {
+    this.config = { useFirestore, userId };
+  }
+
   /**
    * Save a new game result to the leaderboard
+   * Routes to Firestore if authenticated, localStorage otherwise
    */
-  saveScore(entry: Omit<LeaderboardEntry, 'id' | 'timestamp'>): LeaderboardEntry {
+  async saveScore(entry: Omit<LeaderboardEntry, 'id' | 'timestamp'>): Promise<LeaderboardEntry> {
+    const timestamp = Date.now();
+
+    if (this.config.useFirestore && this.config.userId) {
+      // Firestore mode
+      const score = this.calculateScore(entry.clicks, entry.timeSeconds);
+      const gameEntry: Omit<GameEntry, 'id'> = {
+        ...entry,
+        userId: this.config.userId,
+        timestamp,
+        score
+      };
+
+      const gameId = await firestoreService.saveGame(this.config.userId, gameEntry);
+
+      return {
+        ...entry,
+        id: gameId,
+        userId: this.config.userId,
+        timestamp
+      };
+    } else {
+      // localStorage mode (guest)
+      return this.saveScoreToLocalStorage(entry);
+    }
+  }
+
+  /**
+   * Save a score to localStorage (guest mode)
+   */
+  private saveScoreToLocalStorage(entry: Omit<LeaderboardEntry, 'id' | 'timestamp'>): LeaderboardEntry {
     const newEntry: LeaderboardEntry = {
       ...entry,
       id: crypto.randomUUID(),
       timestamp: Date.now(),
     };
 
-    const entries = this.getAllEntries();
+    const entries = this.getEntriesFromLocalStorage();
     entries.push(newEntry);
 
     // Keep only the top entries
@@ -22,12 +71,24 @@ export const leaderboardService = {
     this.saveToStorage(sortedEntries);
 
     return newEntry;
-  },
+  }
 
   /**
    * Get all leaderboard entries, optionally filtered by mode
+   * Routes to Firestore if authenticated, localStorage otherwise
    */
-  getAllEntries(mode?: GameMode): LeaderboardEntry[] {
+  async getAllEntries(mode?: GameMode): Promise<LeaderboardEntry[]> {
+    if (this.config.useFirestore) {
+      return await firestoreService.getGlobalLeaderboard(mode);
+    } else {
+      return this.getEntriesFromLocalStorage(mode);
+    }
+  }
+
+  /**
+   * Get entries from localStorage
+   */
+  private getEntriesFromLocalStorage(mode?: GameMode): LeaderboardEntry[] {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
       if (!data) return [];
@@ -42,35 +103,39 @@ export const leaderboardService = {
       console.error('Failed to load leaderboard:', error);
       return [];
     }
-  },
+  }
 
   /**
    * Get top N entries, optionally filtered by mode
    */
-  getTopEntries(limit: number = 10, mode?: GameMode): LeaderboardEntry[] {
-    const entries = this.getAllEntries(mode);
+  async getTopEntries(limit: number = 10, mode?: GameMode): Promise<LeaderboardEntry[]> {
+    const entries = await this.getAllEntries(mode);
     return this.sortEntries(entries).slice(0, limit);
-  },
+  }
 
   /**
    * Get entries for a specific route
    */
-  getEntriesForRoute(startPage: string, targetPage: string, mode?: GameMode): LeaderboardEntry[] {
-    const entries = this.getAllEntries(mode);
-    return entries
-      .filter(entry => entry.startPage === startPage && entry.targetPage === targetPage)
-      .sort((a, b) => {
-        // Sort by clicks first, then by time
-        if (a.clicks !== b.clicks) return a.clicks - b.clicks;
-        return a.timeSeconds - b.timeSeconds;
-      });
-  },
+  async getEntriesForRoute(startPage: string, targetPage: string, mode?: GameMode): Promise<LeaderboardEntry[]> {
+    if (this.config.useFirestore) {
+      return await firestoreService.getRouteLeaderboard(startPage, targetPage, mode);
+    } else {
+      const entries = this.getEntriesFromLocalStorage(mode);
+      return entries
+        .filter(entry => entry.startPage === startPage && entry.targetPage === targetPage)
+        .sort((a, b) => {
+          // Sort by clicks first, then by time
+          if (a.clicks !== b.clicks) return a.clicks - b.clicks;
+          return a.timeSeconds - b.timeSeconds;
+        });
+    }
+  }
 
   /**
    * Get entries for today's daily challenge
    */
-  getDailyChallengeEntries(dailyChallengeId: string): LeaderboardEntry[] {
-    const entries = this.getAllEntries(GameMode.DAILY);
+  async getDailyChallengeEntries(dailyChallengeId: string): Promise<LeaderboardEntry[]> {
+    const entries = await this.getAllEntries(GameMode.DAILY);
     return entries
       .filter(entry => entry.dailyChallengeId === dailyChallengeId)
       .sort((a, b) => {
@@ -78,7 +143,18 @@ export const leaderboardService = {
         if (a.clicks !== b.clicks) return a.clicks - b.clicks;
         return a.timeSeconds - b.timeSeconds;
       });
-  },
+  }
+
+  /**
+   * Get a user's games (only works in Firestore mode)
+   */
+  async getUserGames(userId: string, limit: number = 50): Promise<GameEntry[]> {
+    if (!this.config.useFirestore) {
+      console.warn('getUserGames is only available in Firestore mode');
+      return [];
+    }
+    return await firestoreService.getUserGames(userId, limit);
+  }
 
   /**
    * Calculate score (lower is better)
@@ -86,7 +162,7 @@ export const leaderboardService = {
    */
   calculateScore(clicks: number, timeSeconds: number): number {
     return clicks * 10 + timeSeconds;
-  },
+  }
 
   /**
    * Sort entries by score (best first)
@@ -97,31 +173,35 @@ export const leaderboardService = {
       const scoreB = this.calculateScore(b.clicks, b.timeSeconds);
       return scoreA - scoreB;
     });
-  },
+  }
 
   /**
-   * Clear all leaderboard data
+   * Clear all leaderboard data (localStorage only, for guest mode)
    */
   clearLeaderboard(): void {
-    localStorage.removeItem(STORAGE_KEY);
-  },
+    if (!this.config.useFirestore) {
+      localStorage.removeItem(STORAGE_KEY);
+    } else {
+      console.warn('Cannot clear Firestore leaderboard from client');
+    }
+  }
 
   /**
-   * Save entries to storage
+   * Save entries to storage (localStorage only)
    */
-  saveToStorage(entries: LeaderboardEntry[]): void {
+  private saveToStorage(entries: LeaderboardEntry[]): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
     } catch (error) {
       console.error('Failed to save leaderboard:', error);
     }
-  },
+  }
 
   /**
    * Get player's best scores
    */
-  getPlayerBestScores(playerName: string, limit: number = 5): LeaderboardEntry[] {
-    const entries = this.getAllEntries();
+  async getPlayerBestScores(playerName: string, limit: number = 5): Promise<LeaderboardEntry[]> {
+    const entries = await this.getAllEntries();
     return entries
       .filter(entry => entry.playerName === playerName)
       .sort((a, b) => {
@@ -130,18 +210,18 @@ export const leaderboardService = {
         return scoreA - scoreB;
       })
       .slice(0, limit);
-  },
+  }
 
   /**
-   * Export leaderboard data as JSON
+   * Export leaderboard data as JSON (localStorage only)
    */
   exportData(): string {
-    const entries = this.getAllEntries();
+    const entries = this.getEntriesFromLocalStorage();
     return JSON.stringify(entries, null, 2);
-  },
+  }
 
   /**
-   * Import leaderboard data from JSON
+   * Import leaderboard data from JSON (localStorage only)
    */
   importData(jsonData: string): boolean {
     try {
@@ -163,4 +243,7 @@ export const leaderboardService = {
       return false;
     }
   }
-};
+}
+
+// Export singleton instance
+export const leaderboardService = new LeaderboardService();

@@ -44,6 +44,7 @@ export interface HistoryItem {
 
 export interface LeaderboardEntry {
   id: string;
+  userId?: string; // Firebase user ID (optional for backward compatibility)
   playerName: string;
   clicks: number;
   timeSeconds: number;
@@ -62,4 +63,40 @@ export interface DailyChallenge {
   targetPage: string;
   startPageData?: WikiPageSummary;
   targetPageData?: WikiPageSummary;
+}
+
+// User authentication types
+export interface User {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  isAnonymous: boolean;
+  pseudo?: string; // For anonymous users
+}
+
+export interface UserProfile {
+  uid: string;
+  displayName: string;
+  email: string | null;
+  photoURL: string | null;
+  isAnonymous: boolean;
+  pseudo?: string;
+  stat: UserStats; // Note: "stat" singular to match Firestore structure
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface UserStats {
+  totalGames: number;
+  avgTime: number;
+  bestTime: number;
+  totalClicks?: number;
+  averageClicks?: number;
+  bestScore?: number;
+}
+
+// Extended game entry with score calculation for Firestore
+export interface GameEntry extends LeaderboardEntry {
+  score: number; // Calculated: clicks * 10 + timeSeconds
 }

@@ -1,5 +1,6 @@
 import { DailyChallenge, WikiPageSummary } from '../types';
 import { fetchRandomPage, fetchPageSummary, fetchHybridPage, fetchGuaranteedPopularPage } from './wikiService';
+import * as firestoreService from './firestoreService';
 
 const STORAGE_KEY = 'wikilink-daily-challenges';
 
@@ -71,9 +72,24 @@ class DailyChallengeService {
 
   async getTodayChallenge(): Promise<DailyChallenge> {
     const todayId = this.getTodayId();
-    const challenges = this.loadChallenges();
 
-    // Check if today's challenge already exists
+    // 1. Try Firestore first (global challenge for all players)
+    try {
+      console.log('[DailyChallenge] Checking Firestore for today\'s challenge:', todayId);
+      const firestoreChallenge = await firestoreService.getTodayChallenge();
+      if (firestoreChallenge) {
+        console.log('[DailyChallenge] Found challenge in Firestore:', firestoreChallenge);
+        // Cache locally for offline access
+        this.saveChallengeLocally(firestoreChallenge);
+        return firestoreChallenge;
+      }
+      console.log('[DailyChallenge] No challenge found in Firestore, will generate new one');
+    } catch (error) {
+      console.warn('Firestore unavailable, using local challenge:', error);
+    }
+
+    // 2. Fallback to localStorage
+    const challenges = this.loadChallenges();
     if (challenges[todayId]) {
       // Fetch the full page data if not already stored
       const challenge = challenges[todayId];
@@ -94,12 +110,33 @@ class DailyChallengeService {
       return challenge;
     }
 
-    // Generate new challenge for today
+    // 3. Generate new challenge
+    console.log('[DailyChallenge] Generating new challenge for:', todayId);
     const newChallenge = await this.generateChallengeForDate(todayId);
-    challenges[todayId] = newChallenge;
-    this.saveChallenges(challenges);
+    console.log('[DailyChallenge] Generated challenge:', newChallenge);
+
+    // 4. Try to save to Firestore (best effort, for global sync)
+    try {
+      console.log('[DailyChallenge] Saving to Firestore...');
+      await firestoreService.createDailyChallenge(newChallenge);
+      console.log('[DailyChallenge] Successfully saved to Firestore');
+    } catch (error) {
+      console.warn('Could not save challenge to Firestore:', error);
+    }
+
+    // 5. Always save locally
+    this.saveChallengeLocally(newChallenge);
 
     return newChallenge;
+  }
+
+  /**
+   * Save a challenge to localStorage
+   */
+  private saveChallengeLocally(challenge: DailyChallenge): void {
+    const challenges = this.loadChallenges();
+    challenges[challenge.id] = challenge;
+    this.saveChallenges(challenges);
   }
 
   /**
