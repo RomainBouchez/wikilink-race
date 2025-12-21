@@ -8,7 +8,9 @@ import { GameSidebar } from './components/GameSidebar';
 import { Button } from './components/Button';
 import { Leaderboard } from './components/Leaderboard';
 import { ModeSelection } from './components/ModeSelection';
-import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search } from 'lucide-react';
+import { AppSidebar } from './components/AppSidebar';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from './components/ui/sidebar';
+import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search, Menu } from 'lucide-react';
 
 const INITIAL_STATE: GameState = {
   status: GameStatus.IDLE,
@@ -27,6 +29,11 @@ function App() {
   const [gameState, setGameState] = useState<GameState>(INITIAL_STATE);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [lastSavedEntryId, setLastSavedEntryId] = useState<string | null>(null);
+
+  const handleResetToHome = () => {
+    setGameState(INITIAL_STATE);
+    setShowLeaderboard(false);
+  };
 
   const initGame = async (mode: GameMode) => {
     setGameState(prev => ({ ...prev, status: GameStatus.LOADING, error: null, mode }));
@@ -166,16 +173,22 @@ function App() {
   // View: Welcome Screen
   if (gameState.status === GameStatus.IDLE || gameState.status === GameStatus.ERROR) {
     return (
-      <>
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-6 font-sans">
-          <div className="max-w-4xl w-full">
-            {/* Header */}
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-10 text-center">
-                  <Globe className="w-16 h-16 text-white mx-auto mb-4 opacity-90" />
-                  <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">WikiLink Race</h1>
-                  <p className="text-blue-100 text-lg">The 6 degrees of Wikipedia separation game.</p>
-              </div>
+      <SidebarProvider>
+        <AppSidebar onNavigateHome={handleResetToHome} onShowLeaderboard={() => setShowLeaderboard(true)} />
+        <SidebarInset>
+          <div className="flex items-center gap-2 border-b px-4 py-2 bg-white">
+            <SidebarTrigger />
+            <h2 className="text-lg font-semibold">WikiLink Race</h2>
+          </div>
+          <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-6 font-sans">
+            <div className="max-w-4xl w-full">
+              {/* Header */}
+              <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-10 text-center">
+                    <Globe className="w-16 h-16 text-white mx-auto mb-4 opacity-90" />
+                    <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">WikiLink Race</h1>
+                    <p className="text-blue-100 text-lg">The 6 degrees of Wikipedia separation game.</p>
+                </div>
 
               <div className="p-8">
                   <div className="prose prose-blue mx-auto text-gray-600">
@@ -228,25 +241,35 @@ function App() {
                 Powered by Wikipedia API
             </div>
           </div>
-        </div>
-        {showLeaderboard && (
-          <Leaderboard
-            onClose={() => setShowLeaderboard(false)}
-            highlightEntryId={lastSavedEntryId || undefined}
-          />
-        )}
-      </>
+          </div>
+          {showLeaderboard && (
+            <Leaderboard
+              onClose={() => setShowLeaderboard(false)}
+              highlightEntryId={lastSavedEntryId || undefined}
+            />
+          )}
+        </SidebarInset>
+      </SidebarProvider>
     );
   }
 
   // View: Loading
   if (gameState.status === GameStatus.LOADING) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
-        <h2 className="text-xl font-semibold text-gray-700">Setting up the race course...</h2>
-        <p className="text-gray-500 mt-2">Selecting random articles</p>
-      </div>
+      <SidebarProvider>
+        <AppSidebar onNavigateHome={handleResetToHome} onShowLeaderboard={() => setShowLeaderboard(true)} />
+        <SidebarInset>
+          <div className="flex items-center gap-2 border-b px-4 py-2 bg-white">
+            <SidebarTrigger />
+            <h2 className="text-lg font-semibold">WikiLink Race</h2>
+          </div>
+          <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
+            <h2 className="text-xl font-semibold text-gray-700">Setting up the race course...</h2>
+            <p className="text-gray-500 mt-2">Selecting random articles</p>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
     );
   }
 
@@ -281,13 +304,19 @@ function App() {
       };
 
       return (
-        <>
-          <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-              <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden text-center">
-                  <div className="bg-green-500 p-8">
-                       <Trophy className="w-20 h-20 text-white mx-auto drop-shadow-md" />
-                       <h1 className="text-3xl font-bold text-white mt-4">Mission Accomplished!</h1>
-                  </div>
+        <SidebarProvider>
+          <AppSidebar onNavigateHome={handleResetToHome} onShowLeaderboard={() => setShowLeaderboard(true)} />
+          <SidebarInset>
+            <div className="flex items-center gap-2 border-b px-4 py-2 bg-white">
+              <SidebarTrigger />
+              <h2 className="text-lg font-semibold">Victoire!</h2>
+            </div>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+                <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden text-center">
+                    <div className="bg-green-500 p-8">
+                         <Trophy className="w-20 h-20 text-white mx-auto drop-shadow-md" />
+                         <h1 className="text-3xl font-bold text-white mt-4">Mission Accomplished!</h1>
+                    </div>
 
                   <div className="p-8">
                       <p className="text-gray-600 mb-6">
@@ -340,57 +369,72 @@ function App() {
                       </div>
                   </div>
               </div>
-          </div>
-          {showLeaderboard && (
-            <Leaderboard
-              onClose={() => setShowLeaderboard(false)}
-              highlightEntryId={lastSavedEntryId || undefined}
-            />
-          )}
-        </>
+            </div>
+            {showLeaderboard && (
+              <Leaderboard
+                onClose={() => setShowLeaderboard(false)}
+                highlightEntryId={lastSavedEntryId || undefined}
+              />
+            )}
+          </SidebarInset>
+        </SidebarProvider>
       );
   }
 
   // View: Playing
   return (
-    <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-gray-100">
-      {/* Main Content Area (The Wiki) */}
-      <main className="flex-1 flex flex-col h-[60vh] lg:h-full relative z-10 order-2 lg:order-1">
-        <header className="bg-white border-b border-gray-200 p-3 flex justify-between items-center lg:hidden shadow-sm">
-             <div className="flex flex-col">
-                 <span className="text-xs text-gray-500">Target</span>
-                 <span className="font-bold text-sm truncate w-40">{gameState.targetPage?.title}</span>
-             </div>
-             <div className="text-xs bg-gray-100 px-2 py-1 rounded">
-                 Clicks: {gameState.clicks}
-             </div>
+    <SidebarProvider>
+      <AppSidebar onNavigateHome={handleResetToHome} onShowLeaderboard={() => setShowLeaderboard(true)} />
+      <SidebarInset className="flex flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 bg-white">
+          <SidebarTrigger className="-ml-1" />
+          <div className="flex items-center justify-between flex-1">
+            <h2 className="text-lg font-semibold">En cours</h2>
+            <div className="text-sm text-gray-600 hidden md:block">
+              Cible: <span className="font-semibold">{gameState.targetPage?.title}</span> | Clics: <span className="font-semibold">{gameState.clicks}</span>
+            </div>
+          </div>
         </header>
-        
-        <div className="flex-1 overflow-hidden relative">
-            {gameState.currentPage && (
-                <WikiViewer 
-                    title={gameState.currentPage.title} 
-                    onNavigate={handleNavigate} 
-                />
-            )}
-        </div>
-      </main>
+        <div className="flex flex-1 flex-col lg:flex-row overflow-hidden bg-gray-100">
+          {/* Main Content Area (The Wiki) */}
+          <main className="flex-1 flex flex-col h-[60vh] lg:h-full relative order-2 lg:order-1">
+            <header className="bg-white border-b border-gray-200 p-3 flex justify-between items-center lg:hidden shadow-sm">
+                 <div className="flex flex-col">
+                     <span className="text-xs text-gray-500">Target</span>
+                     <span className="font-bold text-sm truncate w-40">{gameState.targetPage?.title}</span>
+                 </div>
+                 <div className="text-xs bg-gray-100 px-2 py-1 rounded">
+                     Clicks: {gameState.clicks}
+                 </div>
+            </header>
 
-      {/* Sidebar (Controls & Stats) */}
-      <aside className="order-1 lg:order-2 h-[40vh] lg:h-auto shadow-xl z-20">
-         {gameState.targetPage && gameState.startPage && (
-            <GameSidebar
-                targetPage={gameState.targetPage}
-                startPage={gameState.startPage}
-                history={gameState.history}
-                clicks={gameState.clicks}
-                startTime={gameState.startTime}
-                isPlaying={gameState.status === GameStatus.PLAYING}
-                onNavigateToHistoryPage={handleNavigateToHistoryPage}
-            />
-         )}
-      </aside>
-    </div>
+            <div className="flex-1 overflow-hidden relative">
+                {gameState.currentPage && (
+                    <WikiViewer
+                        title={gameState.currentPage.title}
+                        onNavigate={handleNavigate}
+                    />
+                )}
+            </div>
+          </main>
+
+          {/* Sidebar (Controls & Stats) */}
+          <aside className="order-1 lg:order-2 h-[40vh] lg:h-auto shadow-xl">
+             {gameState.targetPage && gameState.startPage && (
+                <GameSidebar
+                    targetPage={gameState.targetPage}
+                    startPage={gameState.startPage}
+                    history={gameState.history}
+                    clicks={gameState.clicks}
+                    startTime={gameState.startTime}
+                    isPlaying={gameState.status === GameStatus.PLAYING}
+                    onNavigateToHistoryPage={handleNavigateToHistoryPage}
+                />
+             )}
+          </aside>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 

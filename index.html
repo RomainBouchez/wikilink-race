@@ -4,58 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WikiLink Race</title>
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              wiki: {
-                black: '#202122',
-                gray: '#eaecf0',
-                blue: '#3366cc',
-                border: '#a2a9b1',
-              }
-            }
-          }
-        }
-      }
-    </script>
-    <style>
-      /* Custom scrollbar for the wiki viewer */
-      .wiki-content::-webkit-scrollbar {
-        width: 8px;
-      }
-      .wiki-content::-webkit-scrollbar-track {
-        background: #f1f1f1;
-      }
-      .wiki-content::-webkit-scrollbar-thumb {
-        background: #ccc;
-        border-radius: 4px;
-      }
-      .wiki-content::-webkit-scrollbar-thumb:hover {
-        background: #999;
-      }
-      /* Hide some Wikipedia clutter that might come through the API */
-      .mw-editsection, .reference, .noprint, .mw-cite-backlink {
-        display: none !important;
-      }
-
-      /* Fix for invisible links due to Tailwind Preflight reset */
-      /* We force standard Wikipedia link colors within the viewer content */
-      .wiki-content a {
-        color: #3366cc !important;
-        text-decoration: none;
-      }
-      .wiki-content a:hover {
-        text-decoration: underline;
-        color: #1a3c75 !important;
-      }
-      /* Optional: distinguish missing pages (red links) */
-      .wiki-content a.new {
-        color: #ba0000 !important;
-      }
-    </style>
   <script type="importmap">
 {
   "imports": {
