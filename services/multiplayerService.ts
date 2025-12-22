@@ -4,6 +4,10 @@ import {
   PlayerState,
   PlayerStatus,
   WikiPageSummary,
+  LobbyConfig,
+  GameEndMode,
+  ChallengeMode,
+  RoundScore,
 } from '../types';
 import {
   createMultiplayerLobby,
@@ -12,6 +16,7 @@ import {
   subscribeToLobby as firestoreSubscribeToLobby,
   deleteLobby,
 } from './firestoreService';
+import { fetchHybridPage } from './wikiService';
 
 class MultiplayerService {
   /**
@@ -63,7 +68,8 @@ class MultiplayerService {
     displayName: string,
     photoURL: string | null,
     startPage: WikiPageSummary,
-    targetPage: WikiPageSummary
+    targetPage: WikiPageSummary,
+    config?: LobbyConfig
   ): Promise<LobbyState> {
     const roomCode = await this.generateUniqueRoomCode();
 
@@ -76,6 +82,14 @@ class MultiplayerService {
       history: [],
       finishTime: null,
       joinedAt: Date.now(),
+    };
+
+    // Default config if not provided
+    const lobbyConfig: LobbyConfig = config || {
+      themes: ['all'],
+      numberOfRounds: 1,
+      gameEndMode: GameEndMode.FIRST_FINISH,
+      challengeMode: ChallengeMode.RANDOM,
     };
 
     const lobby: LobbyState = {
@@ -95,6 +109,8 @@ class MultiplayerService {
       players: {
         [userId]: playerState,
       },
+      config: lobbyConfig,
+      currentRound: 1,
     };
 
     await createMultiplayerLobby(lobby);
@@ -189,6 +205,144 @@ class MultiplayerService {
   }
 
   /**
+   * Set challenge selection status
+   */
+  async setSelectingChallenge(roomCode: string, selecting: boolean): Promise<void> {
+    await updateLobby(roomCode, {
+      selectingChallenge: selecting,
+    });
+  }
+
+  /**
+   * Update lobby status
+   */
+  async updateLobbyStatus(roomCode: string, status: LobbyStatus): Promise<void> {
+    await updateLobby(roomCode, {
+      status: status,
+    });
+  }
+
+  /**
+   * Increment the current round counter
+   */
+  async incrementRound(roomCode: string): Promise<void> {
+    const lobby = await getLobby(roomCode);
+
+    if (!lobby) {
+      throw new Error('Lobby not found');
+    }
+
+    const currentRound = lobby.currentRound || 1;
+    const totalRounds = lobby.config?.numberOfRounds || 1;
+
+    if (currentRound >= totalRounds) {
+      throw new Error('No more rounds to play');
+    }
+
+    await updateLobby(roomCode, {
+      currentRound: currentRound + 1,
+    });
+  }
+
+  /**
+   * Save round scores to history before starting next round
+   */
+  async saveRoundScore(roomCode: string): Promise<void> {
+    const lobby = await getLobby(roomCode);
+
+    if (!lobby) {
+      throw new Error('Lobby not found');
+    }
+
+    const currentRound = lobby.currentRound || 1;
+
+    // Calculate positions and scores for all players
+    const playerScores: Record<string, {
+      clicks: number;
+      finishTime: number | null;
+      timeTaken: number | null;
+      position: number;
+    }> = {};
+
+    // Sort players by finish time (winners first), then by clicks
+    const sortedPlayers = Object.entries(lobby.players)
+      .map(([playerId, player]) => ({
+        playerId,
+        player,
+        timeTaken: player.finishTime && lobby.startedAt
+          ? Math.floor((player.finishTime - lobby.startedAt) / 1000)
+          : null,
+      }))
+      .sort((a, b) => {
+        if (a.player.finishTime && b.player.finishTime) {
+          return a.player.finishTime - b.player.finishTime;
+        }
+        if (a.player.finishTime) return -1;
+        if (b.player.finishTime) return 1;
+        return a.player.clicks - b.player.clicks;
+      });
+
+    // Assign positions and create score records
+    sortedPlayers.forEach(({ playerId, player, timeTaken }, index) => {
+      playerScores[playerId] = {
+        clicks: player.clicks,
+        finishTime: player.finishTime,
+        timeTaken,
+        position: index + 1,
+      };
+    });
+
+    // Create round score entry
+    const roundScore: RoundScore = {
+      roundNumber: currentRound,
+      winnerId: lobby.winnerId,
+      winnerName: lobby.winnerName,
+      playerScores,
+    };
+
+    // Add to round history
+    const roundHistory = lobby.roundHistory || [];
+    roundHistory.push(roundScore);
+
+    // Calculate total scores for each player
+    const updatedPlayers = { ...lobby.players };
+    Object.keys(updatedPlayers).forEach((playerId) => {
+      let totalScore = 0;
+      roundHistory.forEach((round) => {
+        const playerRoundScore = round.playerScores[playerId];
+        if (playerRoundScore) {
+          // Score = clicks * 10 + time (lower is better)
+          const roundScore = playerRoundScore.clicks * 10 + (playerRoundScore.timeTaken || 999);
+          totalScore += roundScore;
+        }
+      });
+      updatedPlayers[playerId].totalScore = totalScore;
+    });
+
+    // Update lobby with round history and total scores
+    await updateLobby(roomCode, {
+      roundHistory,
+      players: updatedPlayers,
+    });
+  }
+
+  /**
+   * Update lobby pages (for semi-random and manual challenge modes)
+   */
+  async updateLobbyPages(
+    roomCode: string,
+    startPage: WikiPageSummary,
+    targetPage: WikiPageSummary
+  ): Promise<void> {
+    await updateLobby(roomCode, {
+      startPage: startPage.title,
+      targetPage: targetPage.title,
+      startPageData: startPage,
+      targetPageData: targetPage,
+    });
+  }
+
+  /**
    * Start the game
    */
   async startGame(roomCode: string): Promise<void> {
@@ -203,12 +357,16 @@ class MultiplayerService {
       throw new Error('Need at least 2 players to start');
     }
 
-    // Set all players to PLAYING status
+    // Set all players to PLAYING status and reset their progress
     const updatedPlayers = { ...lobby.players };
     Object.keys(updatedPlayers).forEach((playerId) => {
       updatedPlayers[playerId] = {
         ...updatedPlayers[playerId],
         status: PlayerStatus.PLAYING,
+        currentPage: null,
+        clicks: 0,
+        history: [],
+        finishTime: null,
       };
     });
 
@@ -216,6 +374,90 @@ class MultiplayerService {
       status: LobbyStatus.PLAYING,
       startedAt: Date.now(),
       players: updatedPlayers,
+      winnerId: null,
+      winnerName: null,
+    });
+  }
+
+  /**
+   * Start next round (reset players, does NOT increment round counter - use incrementRound() first)
+   */
+  async startNextRound(roomCode: string): Promise<void> {
+    const lobby = await getLobby(roomCode);
+
+    if (!lobby) {
+      throw new Error('Lobby not found');
+    }
+
+    // Reset all players for next round
+    const updatedPlayers = { ...lobby.players };
+    Object.keys(updatedPlayers).forEach((playerId) => {
+      updatedPlayers[playerId] = {
+        ...updatedPlayers[playerId],
+        status: PlayerStatus.PLAYING,
+        currentPage: null,
+        clicks: 0,
+        history: [],
+        finishTime: null,
+      };
+    });
+
+    await updateLobby(roomCode, {
+      status: LobbyStatus.PLAYING,
+      startedAt: Date.now(),
+      players: updatedPlayers,
+      winnerId: null,
+      winnerName: null,
+      selectingChallenge: false,
+    });
+  }
+
+  /**
+   * Start next round with random challenge (for random mode)
+   */
+  async startNextRoundWithRandomChallenge(roomCode: string, themes: string[]): Promise<void> {
+    const lobby = await getLobby(roomCode);
+
+    if (!lobby) {
+      throw new Error('Lobby not found');
+    }
+
+    const currentRound = lobby.currentRound || 1;
+    const totalRounds = lobby.config?.numberOfRounds || 1;
+
+    if (currentRound >= totalRounds) {
+      throw new Error('No more rounds to play');
+    }
+
+    // Generate new random pages
+    const startPage = await fetchHybridPage();
+    const targetPage = await fetchHybridPage();
+
+    // Reset all players for next round
+    const updatedPlayers = { ...lobby.players };
+    Object.keys(updatedPlayers).forEach((playerId) => {
+      updatedPlayers[playerId] = {
+        ...updatedPlayers[playerId],
+        status: PlayerStatus.PLAYING,
+        currentPage: null,
+        clicks: 0,
+        history: [],
+        finishTime: null,
+      };
+    });
+
+    await updateLobby(roomCode, {
+      status: LobbyStatus.PLAYING,
+      currentRound: currentRound + 1,
+      startedAt: Date.now(),
+      startPage: startPage.title,
+      targetPage: targetPage.title,
+      startPageData: startPage,
+      targetPageData: targetPage,
+      players: updatedPlayers,
+      winnerId: null,
+      winnerName: null,
+      selectingChallenge: false,
     });
   }
 

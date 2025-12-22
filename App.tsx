@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameStatus, GameState, WikiPageSummary, GameMode, User, LobbyState, LobbyStatus, PlayerStatus } from './types';
+import { GameStatus, GameState, WikiPageSummary, GameMode, User, LobbyState, LobbyStatus, PlayerStatus, ChallengeMode } from './types';
 import { fetchRandomPage, fetchPageSummary, fetchHybridPage } from './services/wikiService';
 import { leaderboardService } from './services/leaderboardService';
 import { dailyChallengeService } from './services/dailyChallengeService';
@@ -18,6 +18,9 @@ import { AuthModal } from './components/AuthModal';
 import { MigrationPrompt } from './components/MigrationPrompt';
 import { MultiplayerLobbyModal } from './components/MultiplayerLobbyModal';
 import { LobbyWaitingRoom } from './components/LobbyWaitingRoom';
+import { LobbyConfigPage } from './components/LobbyConfigPage';
+import { MultiplayerRoundEnd } from './components/MultiplayerRoundEnd';
+import { MultiplayerFinalRecap } from './components/MultiplayerFinalRecap';
 import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search, Map, ChevronRight, Home } from 'lucide-react';
 const INITIAL_STATE: GameState = {
   status: GameStatus.IDLE,
@@ -47,6 +50,7 @@ function App() {
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
   const [showLobbyModal, setShowLobbyModal] = useState(false);
   const [multiplayerAction, setMultiplayerAction] = useState<'create' | 'join' | null>(null);
+  const [showLobbyConfigPage, setShowLobbyConfigPage] = useState(false);
 
   // Listen to authentication state changes
   useEffect(() => {
@@ -80,61 +84,68 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Restore daily progress on mount
+  // Check for saved daily progress (but don't auto-restore)
+  const [hasSavedDailyProgress, setHasSavedDailyProgress] = useState(false);
+
   useEffect(() => {
-    async function restoreProgress() {
-      if (gameState.status !== GameStatus.IDLE || authLoading) return;
+    async function checkSavedProgress() {
+      if (authLoading) return;
 
       const todayId = dailyChallengeService.getTodayId();
 
       // Check if already completed
       if (dailyChallengeService.hasCompletedToday()) {
         await dailyProgressService.clearProgress(todayId, user);
+        setHasSavedDailyProgress(false);
         return;
       }
 
-      // Load saved progress
+      // Check if there's saved progress
       const progress = await dailyProgressService.loadProgress(todayId, user);
-      if (!progress) return;
-
-      // Verify it's for today
-      if (progress.dailyChallengeId !== todayId) {
-        await dailyProgressService.clearProgress(progress.dailyChallengeId, user);
-        return;
-      }
-
-      try {
-        // Get today's challenge
-        const challenge = await dailyChallengeService.getTodayChallenge();
-
-        // Fetch current page
-        const currentPage = await fetchPageSummary(progress.currentPageTitle);
-
-        // Restore state
-        setGameState({
-          status: GameStatus.PLAYING,
-          mode: GameMode.DAILY,
-          startPage: challenge.startPageData || await fetchPageSummary(challenge.startPage),
-          targetPage: challenge.targetPageData || await fetchPageSummary(challenge.targetPage),
-          currentPage: currentPage,
-          history: progress.history,
-          clicks: progress.clicks,
-          startTime: progress.startTime,
-          endTime: null,
-          error: null,
-          dailyChallengeId: todayId,
-        });
-      } catch (error) {
-        console.error('[DailyProgress] Failed to restore progress:', error);
-        // Clear invalid progress
-        await dailyProgressService.clearProgress(todayId, user);
+      if (progress && progress.dailyChallengeId === todayId) {
+        setHasSavedDailyProgress(true);
+      } else {
+        setHasSavedDailyProgress(false);
       }
     }
 
     if (!authLoading) {
-      restoreProgress();
+      checkSavedProgress();
     }
   }, [authLoading, user]);
+
+  // Function to restore daily progress when user chooses to
+  const restoreDailyProgress = async () => {
+    const todayId = dailyChallengeService.getTodayId();
+    const progress = await dailyProgressService.loadProgress(todayId, user);
+
+    if (!progress) return;
+
+    try {
+      const challenge = await dailyChallengeService.getTodayChallenge();
+      const currentPage = await fetchPageSummary(progress.currentPageTitle);
+
+      setGameState({
+        status: GameStatus.PLAYING,
+        mode: GameMode.DAILY,
+        startPage: challenge.startPageData || await fetchPageSummary(challenge.startPage),
+        targetPage: challenge.targetPageData || await fetchPageSummary(challenge.targetPage),
+        currentPage: currentPage,
+        history: progress.history,
+        clicks: progress.clicks,
+        startTime: progress.startTime,
+        endTime: null,
+        error: null,
+        dailyChallengeId: todayId,
+      });
+
+      setHasSavedDailyProgress(false);
+    } catch (error) {
+      console.error('[DailyProgress] Failed to restore progress:', error);
+      await dailyProgressService.clearProgress(todayId, user);
+      setHasSavedDailyProgress(false);
+    }
+  };
 
   // Auto-save daily progress on every click
   useEffect(() => {
@@ -164,8 +175,18 @@ function App() {
 
         setLobbyState(lobby);
 
-        // If the game starts
+        // If the game starts or restarts (new round)
         if (lobby.status === LobbyStatus.PLAYING && gameState.status === GameStatus.IDLE) {
+          initMultiplayerGame(lobby);
+        }
+
+        // If lobby went back to WAITING while we were on win screen (next round setup)
+        if (lobby.status === LobbyStatus.WAITING && gameState.status === GameStatus.WON) {
+          setGameState(INITIAL_STATE);
+        }
+
+        // If a new round started while we were on win screen
+        if (lobby.status === LobbyStatus.PLAYING && gameState.status === GameStatus.WON) {
           initMultiplayerGame(lobby);
         }
 
@@ -216,7 +237,12 @@ function App() {
     // Handle multiplayer mode
     if (mode === GameMode.MULTIPLAYER && action) {
       setMultiplayerAction(action);
-      setShowLobbyModal(true);
+      // Show config page for create, modal for join
+      if (action === 'create') {
+        setShowLobbyConfigPage(true);
+      } else {
+        setShowLobbyModal(true);
+      }
       return;
     }
 
@@ -453,6 +479,24 @@ function App() {
                           <span className="mr-2">⚠️</span> {gameState.error}
                       </div>
                   )}
+
+                  {/* Saved Daily Progress Alert */}
+                  {hasSavedDailyProgress && (
+                      <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mt-6">
+                          <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                  <h3 className="font-bold text-blue-900 mb-1">Partie daily challenge en cours</h3>
+                                  <p className="text-sm text-blue-700">Vous avez une partie daily challenge non terminée. Voulez-vous la reprendre ?</p>
+                              </div>
+                              <Button
+                                  onClick={restoreDailyProgress}
+                                  className="ml-4"
+                              >
+                                  Reprendre
+                              </Button>
+                          </div>
+                      </div>
+                  )}
               </div>
             </div>
 
@@ -474,6 +518,36 @@ function App() {
             onClose={() => setShowLeaderboard(false)}
             highlightEntryId={lastSavedEntryId || undefined}
             user={user}
+          />
+        )}
+
+        {/* Lobby Config Page */}
+        {showLobbyConfigPage && (
+          <LobbyConfigPage
+            user={user}
+            onClose={() => {
+              setShowLobbyConfigPage(false);
+              setMultiplayerAction(null);
+            }}
+            onCreateLobby={async (config, startPage, targetPage) => {
+              if (!user) return;
+
+              try {
+                const lobby = await multiplayerService.createLobby(
+                  user.uid,
+                  user.displayName || user.pseudo || 'Player',
+                  user.photoURL,
+                  startPage,
+                  targetPage,
+                  config
+                );
+                setLobbyState(lobby);
+                setShowLobbyConfigPage(false);
+              } catch (error) {
+                console.error('Failed to create lobby:', error);
+                alert('Erreur lors de la création du lobby');
+              }
+            }}
           />
         )}
 
@@ -502,9 +576,27 @@ function App() {
           <LobbyWaitingRoom
             lobby={lobbyState}
             currentUser={user}
-            onStartGame={() => {
+            onStartGame={async (startPage, targetPage) => {
               if (lobbyState.createdBy === user?.uid) {
-                multiplayerService.startGame(lobbyState.roomCode);
+                // Update lobby with selected pages if provided (for semi-random or manual modes)
+                if (startPage && targetPage) {
+                  await multiplayerService.updateLobbyPages(
+                    lobbyState.roomCode,
+                    startPage,
+                    targetPage
+                  );
+                }
+
+                // Check if this is the first round or a subsequent round
+                // If there's round history, it means we've already played at least one round
+                const hasRoundHistory = lobbyState.roundHistory && lobbyState.roundHistory.length > 0;
+                if (hasRoundHistory) {
+                  // Subsequent rounds: use startNextRound (doesn't increment, just starts)
+                  multiplayerService.startNextRound(lobbyState.roomCode);
+                } else {
+                  // First round: use startGame
+                  multiplayerService.startGame(lobbyState.roomCode);
+                }
               }
             }}
             onLeave={() => {
@@ -539,6 +631,78 @@ function App() {
 
   // View: Win Screen
   if (gameState.status === GameStatus.WON) {
+      // Show multiplayer round end screen for multiplayer mode
+      if (gameState.mode === GameMode.MULTIPLAYER && lobbyState) {
+        const currentRound = lobbyState.currentRound || 1;
+        const totalRounds = lobbyState.config?.numberOfRounds || 1;
+        const isLastRound = currentRound >= totalRounds;
+
+        // If it's the last round, save scores and show final recap
+        if (isLastRound) {
+          // Save final round scores if not already saved
+          const savedRounds = lobbyState.roundHistory?.length || 0;
+          if (savedRounds < currentRound && lobbyState.createdBy === user?.uid) {
+            multiplayerService.saveRoundScore(lobbyState.roomCode);
+          }
+
+          return (
+            <MultiplayerFinalRecap
+              lobby={lobbyState}
+              currentUser={user}
+              onLeave={() => {
+                if (user) {
+                  multiplayerService.leaveLobby(lobbyState.roomCode, user.uid);
+                }
+                setLobbyState(null);
+                setGameState(INITIAL_STATE);
+              }}
+            />
+          );
+        }
+
+        // Otherwise show round end screen with next round button
+        const handleNextRound = async () => {
+          if (lobbyState.createdBy !== user?.uid) return;
+
+          // Save current round scores to history first
+          await multiplayerService.saveRoundScore(lobbyState.roomCode);
+
+          const needsChallengeSelection = lobbyState.config &&
+            (lobbyState.config.challengeMode === ChallengeMode.SEMI_RANDOM ||
+             lobbyState.config.challengeMode === ChallengeMode.MANUAL);
+
+          if (needsChallengeSelection) {
+            // Increment round counter and go to challenge selection
+            await multiplayerService.incrementRound(lobbyState.roomCode);
+            // Set selecting challenge flag WITHOUT starting the round yet
+            // The round will be started after challenge selection in LobbyWaitingRoom
+            await multiplayerService.setSelectingChallenge(lobbyState.roomCode, true);
+            // Change lobby status back to WAITING so it shows the waiting room
+            await multiplayerService.updateLobbyStatus(lobbyState.roomCode, LobbyStatus.WAITING);
+            setGameState(INITIAL_STATE);
+          } else {
+            // For random mode: generate new challenge and start next round
+            await multiplayerService.startNextRoundWithRandomChallenge(lobbyState.roomCode, lobbyState.config?.themes || ['all']);
+            setGameState(INITIAL_STATE);
+          }
+        };
+
+        return (
+          <MultiplayerRoundEnd
+            lobby={lobbyState}
+            currentUser={user}
+            onNextRound={handleNextRound}
+            onLeave={() => {
+              if (user) {
+                multiplayerService.leaveLobby(lobbyState.roomCode, user.uid);
+              }
+              setLobbyState(null);
+              setGameState(INITIAL_STATE);
+            }}
+          />
+        );
+      }
+
       const timeTaken = gameState.startTime && gameState.endTime
         ? Math.floor((gameState.endTime - gameState.startTime) / 1000)
         : 0;

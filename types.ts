@@ -128,6 +128,38 @@ export enum PlayerStatus {
   ABANDONED = 'abandoned'
 }
 
+export enum GameEndMode {
+  FIRST_FINISH = 'first_finish',      // Le jeu s'arrête quand le premier joueur finit
+  TURN_BASED_30S = 'turn_based_30s',  // Mode tour par tour avec 30s par tour
+  TURN_BASED_45S = 'turn_based_45s',  // Mode tour par tour avec 45s par tour
+  TURN_BASED_1M = 'turn_based_1m'     // Mode tour par tour avec 1min par tour
+}
+
+export enum ChallengeMode {
+  RANDOM = 'random',              // L'app choisit aléatoirement
+  SEMI_RANDOM = 'semi_random',    // L'app propose 3 défis, le chef choisit
+  MANUAL = 'manual'               // Le chef entre manuellement start et target
+}
+
+export interface LobbyConfig {
+  themes: string[];           // Liste des thèmes sélectionnés, ou ["all"] pour tous les thèmes
+  numberOfRounds: number;     // Nombre de rounds à jouer
+  gameEndMode: GameEndMode;   // Mode de fin de jeu
+  challengeMode: ChallengeMode; // Mode de sélection des défis
+}
+
+export interface RoundScore {
+  roundNumber: number;
+  winnerId: string | null;
+  winnerName: string | null;
+  playerScores: Record<string, {
+    clicks: number;
+    finishTime: number | null;
+    timeTaken: number | null; // Time in seconds
+    position: number; // 1st, 2nd, 3rd, etc.
+  }>;
+}
+
 export interface PlayerState {
   displayName: string;
   photoURL: string | null;
@@ -137,6 +169,7 @@ export interface PlayerState {
   history: string[];
   finishTime: number | null;
   joinedAt: number;
+  totalScore?: number; // Total score across all rounds (lower is better)
 }
 
 export interface LobbyState {
@@ -154,4 +187,8 @@ export interface LobbyState {
   winnerId: string | null;
   winnerName: string | null;
   players: Record<string, PlayerState>;
+  config: LobbyConfig;        // Configuration du lobby
+  currentRound?: number;      // Round actuel (pour mode multi-rounds)
+  selectingChallenge?: boolean; // Indique si le chef est en train de sélectionner les pages
+  roundHistory?: RoundScore[]; // Historique des scores de chaque round
 }

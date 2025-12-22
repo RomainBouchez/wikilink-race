@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Copy, Check, Users, Play, LogOut, Crown } from 'lucide-react';
+import { Copy, Check, Users, Play, LogOut, Crown, Settings, Target, Gamepad2, Shuffle } from 'lucide-react';
 import { Button } from './Button';
-import { LobbyState, User } from '../types';
+import { LobbyState, User, ChallengeMode, WikiPageSummary } from '../types';
+import { SemiRandomChallengeSelector } from './SemiRandomChallengeSelector';
+import { ManualChallengeInput } from './ManualChallengeInput';
 
 interface LobbyWaitingRoomProps {
   lobby: LobbyState;
   currentUser: User | null;
-  onStartGame: () => void;
+  onStartGame: (startPage?: WikiPageSummary, targetPage?: WikiPageSummary) => void;
   onLeave: () => void;
 }
 
@@ -27,9 +29,80 @@ export const LobbyWaitingRoom: React.FC<LobbyWaitingRoomProps> = ({
   const isCreator = currentUser?.uid === lobby.createdBy;
   const playerCount = Object.keys(lobby.players).length;
   const canStart = playerCount >= 2 && isCreator;
+  const needsChallengeSelection = lobby.config &&
+    (lobby.config.challengeMode === ChallengeMode.SEMI_RANDOM ||
+     lobby.config.challengeMode === ChallengeMode.MANUAL);
+  const showChallengeSelector = lobby.selectingChallenge || false;
+
+  const handleStartGameClick = async () => {
+    if (needsChallengeSelection) {
+      // Import multiplayerService to update the lobby state
+      const { multiplayerService } = await import('../services/multiplayerService');
+      await multiplayerService.setSelectingChallenge(lobby.roomCode, true);
+    } else {
+      onStartGame();
+    }
+  };
+
+  const handleChallengeConfirm = async (startPage: WikiPageSummary, targetPage: WikiPageSummary) => {
+    const { multiplayerService } = await import('../services/multiplayerService');
+    await multiplayerService.setSelectingChallenge(lobby.roomCode, false);
+    onStartGame(startPage, targetPage);
+  };
+
+  const handleChallengeCancel = async () => {
+    const { multiplayerService } = await import('../services/multiplayerService');
+    await multiplayerService.setSelectingChallenge(lobby.roomCode, false);
+  };
+
+
+  const getChallengeModeLabel = (mode: ChallengeMode): string => {
+    switch (mode) {
+      case ChallengeMode.RANDOM:
+        return 'Aléatoire';
+      case ChallengeMode.SEMI_RANDOM:
+        return 'Semi-aléatoire';
+      case ChallengeMode.MANUAL:
+        return 'Manuel';
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-purple-600 via-purple-700 to-pink-800 flex items-center justify-center z-50 p-4">
+      {/* Challenge Selector Modal - Only for creator */}
+      {showChallengeSelector && isCreator && lobby.config && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="max-w-3xl w-full">
+            {lobby.config.challengeMode === ChallengeMode.SEMI_RANDOM ? (
+              <SemiRandomChallengeSelector
+                onConfirm={handleChallengeConfirm}
+                onCancel={handleChallengeCancel}
+              />
+            ) : (
+              <ManualChallengeInput
+                onConfirm={handleChallengeConfirm}
+                onCancel={handleChallengeCancel}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Waiting overlay for non-creators when challenge is being selected */}
+      {showChallengeSelector && !isCreator && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-purple-600 mx-auto mb-4"></div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              Sélection des pages en cours
+            </h3>
+            <p className="text-gray-600">
+              {lobby.createdByName} est en train de choisir les pages du défi...
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -64,6 +137,47 @@ export const LobbyWaitingRoom: React.FC<LobbyWaitingRoomProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Configuration */}
+        {lobby.config && (
+          <div className="mb-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-center mb-3">
+              <Settings className="w-5 h-5 text-purple-600 mr-2" />
+              <h3 className="text-sm font-bold text-purple-900">Configuration du lobby</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="bg-white rounded-md p-3 border border-purple-100">
+                <div className="flex items-center text-purple-600 mb-1">
+                  <Gamepad2 className="w-4 h-4 mr-1" />
+                  <span className="text-xs font-semibold">Thèmes</span>
+                </div>
+                <div className="text-gray-900 font-medium">
+                  {lobby.config.themes.includes('all')
+                    ? 'Tous'
+                    : lobby.config.themes.length === 1
+                    ? lobby.config.themes[0]
+                    : `${lobby.config.themes.length} thèmes`}
+                </div>
+              </div>
+              <div className="bg-white rounded-md p-3 border border-purple-100">
+                <div className="flex items-center text-purple-600 mb-1">
+                  <Target className="w-4 h-4 mr-1" />
+                  <span className="text-xs font-semibold">Rounds</span>
+                </div>
+                <div className="text-gray-900 font-medium">{lobby.config.numberOfRounds}</div>
+              </div>
+              <div className="bg-white rounded-md p-3 border border-purple-100">
+                <div className="flex items-center text-purple-600 mb-1">
+                  <Shuffle className="w-4 h-4 mr-1" />
+                  <span className="text-xs font-semibold">Défis</span>
+                </div>
+                <div className="text-gray-900 font-medium text-xs">
+                  {getChallengeModeLabel(lobby.config.challengeMode)}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Challenge Info */}
         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -140,7 +254,7 @@ export const LobbyWaitingRoom: React.FC<LobbyWaitingRoomProps> = ({
         <div className="flex gap-3">
           {isCreator && (
             <Button
-              onClick={onStartGame}
+              onClick={handleStartGameClick}
               disabled={playerCount < 2}
               className="flex-1 flex items-center justify-center gap-2"
             >
