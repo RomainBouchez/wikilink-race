@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameStatus, GameState, WikiPageSummary, GameMode, User, LobbyState, LobbyStatus, PlayerStatus, ChallengeMode } from './types';
-import { fetchRandomPage, fetchPageSummary, fetchHybridPage } from './services/wikiService';
+import { fetchRandomPage, fetchPageSummary, fetchHybridPage, arePageTitlesEqual } from './services/wikiService';
 import { leaderboardService } from './services/leaderboardService';
 import { dailyChallengeService } from './services/dailyChallengeService';
 import { dailyProgressService } from './services/dailyProgressService';
@@ -318,17 +318,8 @@ function App() {
   const handleNavigate = useCallback(async (title: string) => {
     if (gameState.status !== GameStatus.PLAYING) return;
 
-    // Normalizing titles (Wiki titles are case sensitive on the first letter usually, but spaces become underscores)
-    const normalizedTarget = gameState.targetPage?.title.replace(/ /g, '_');
-    const normalizedCurrent = title.replace(/ /g, '_');
-
     // We update state optimistically for the navigation, but we need to fetch the summary for the sidebar
     // Note: WikiViewer handles the HTML fetching independently based on the title prop.
-
-    // Check Win Condition
-    // We decodeURIComponent because title from href might be encoded, but target title from API is usually clean text.
-    // However, API titles have spaces, hrefs have underscores.
-    const isWin = normalizedCurrent === normalizedTarget?.replace(/ /g, '_');
 
     let pageSummary: WikiPageSummary = { title: title, displaytitle: title };
     try {
@@ -337,6 +328,11 @@ function App() {
         // If summary fetch fails, we just use the title, not a game breaker
         console.warn("Could not fetch summary for", title);
     }
+
+    // Check Win Condition
+    // Compare canonical titles (after Wikipedia API resolves redirects)
+    // This accepts variants like "USB" vs "Universal Serial Bus" and homonymies like "USB (homonymie)"
+    const isWin = arePageTitlesEqual(pageSummary.title, gameState.targetPage?.title || '');
 
     setGameState(prev => {
         const newHistory = [...prev.history, title];

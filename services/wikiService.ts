@@ -4,6 +4,65 @@ import { getRandomPopularPage } from './popularPages';
 const API_BASE = 'https://fr.wikipedia.org/api/rest_v1';
 
 /**
+ * Checks if a page is a disambiguation page (homonymie)
+ * NOTE: Kept for potential future use, but no longer blocks game wins
+ */
+export const isDisambiguationPage = (page: WikiPageSummary): boolean => {
+  // Check if title contains (homonymie) in French
+  if (page.title.includes('(homonymie)')) {
+    return true;
+  }
+
+  // Check if description mentions disambiguation
+  if (page.description) {
+    const lowerDesc = page.description.toLowerCase();
+    if (lowerDesc.includes('page d\'homonymie') ||
+        lowerDesc.includes('disambiguation page') ||
+        lowerDesc.includes('wikimedia disambiguation')) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Extracts the base name of a page by removing disambiguation suffix
+ * Examples:
+ *   "USB (homonymie)" -> "USB"
+ *   "Universal Serial Bus" -> "Universal Serial Bus"
+ */
+export const getBasePageName = (title: string): string => {
+  return title.replace(/\s*\(homonymie\)\s*$/i, '').trim();
+};
+
+/**
+ * Compares two page titles, accounting for redirects and disambiguation variants
+ * Returns true if:
+ * 1. Titles match exactly (after normalization)
+ * 2. Both resolve to the same base name (e.g., "USB" vs "USB (homonymie)")
+ *
+ * Note: fetchPageSummary() already follows redirects, so canonical titles
+ * are returned automatically by Wikipedia API
+ */
+export const arePageTitlesEqual = (title1: string, title2: string): boolean => {
+  // Normalize: replace spaces with underscores and lowercase for comparison
+  const normalized1 = title1.replace(/ /g, '_').toLowerCase();
+  const normalized2 = title2.replace(/ /g, '_').toLowerCase();
+
+  // Direct match after normalization
+  if (normalized1 === normalized2) {
+    return true;
+  }
+
+  // Check if both resolve to same base name (handles homonymies)
+  const base1 = getBasePageName(title1).replace(/ /g, '_').toLowerCase();
+  const base2 = getBasePageName(title2).replace(/ /g, '_').toLowerCase();
+
+  return base1 === base2;
+};
+
+/**
  * Fetches a truly random page from French Wikipedia
  * Uses Wikipedia's random page feature
  */
