@@ -1,49 +1,15 @@
 /**
  * Script temporaire pour créer manuellement un challenge quotidien
- * À exécuter une seule fois pour déboguer
+ * DEPRECATED: Utilisez plutôt `npm run generate-daily` qui génère automatiquement
+ * des challenges aléatoires de manière sécurisée.
+ *
+ * Ce fichier est conservé pour référence historique uniquement.
  */
 
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+console.warn('⚠️  Ce script est DEPRECATED');
+console.warn('⚠️  Utilisez plutôt: npm run generate-daily');
+console.warn('');
+console.warn('Le nouveau script génère automatiquement des challenges aléatoires');
+console.warn('avec Firebase Admin SDK et des credentials sécurisés depuis .env');
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDSjqcn61UXdMEKQ0ZAqZ2n1souDIzo1pk",
-  authDomain: "wikilink-race.firebaseapp.com",
-  projectId: "wikilink-race",
-  storageBucket: "wikilink-race.firebasestorage.app",
-  messagingSenderId: "126356447928",
-  appId: "1:126356447928:web:5cffcd7b846b1396cdca4d"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-async function createTodayChallenge() {
-  const today = new Date().toISOString().split('T')[0];
-
-  const challenge = {
-    startPage: "France",
-    targetPage: "Paris",
-    active: true,
-    startPageData: {
-      title: "France",
-      displaytitle: "France",
-      description: "Pays d'Europe occidentale",
-      extract: "La France, en forme longue depuis 1875 la République française, est un État souverain transcontinental..."
-    },
-    targetPageData: {
-      title: "Paris",
-      displaytitle: "Paris",
-      description: "Capitale de la France",
-      extract: "Paris est la capitale de la France..."
-    }
-  };
-
-  const challengeRef = doc(db, 'daily_challenges', today);
-  await setDoc(challengeRef, challenge);
-
-  console.log(`Challenge créé pour ${today}:`, challenge);
-  process.exit(0);
-}
-
-createTodayChallenge().catch(console.error);
+process.exit(1);
