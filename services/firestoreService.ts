@@ -26,12 +26,17 @@ export async function createOrUpdateUserProfile(user: User): Promise<void> {
   const userDoc = await getDoc(userRef);
 
   if (!userDoc.exists()) {
+    // Generate unique friend code for new user
+    const { friendsService } = await import('./friendsService');
+    const friendCode = await friendsService.generateUniqueFriendCode();
+
     // Create new profile
     await setDoc(userRef, {
       displayName: user.displayName || user.pseudo || 'Joueur Anonyme',
       email: user.email,
       photoURL: user.photoURL,
       isAnonymous: user.isAnonymous,
+      friendCode: friendCode,
       createdAt: serverTimestamp(),
       stat: {
         totalGames: 0,
@@ -41,10 +46,20 @@ export async function createOrUpdateUserProfile(user: User): Promise<void> {
     });
   } else {
     // Update existing profile (displayName and photoURL might have changed)
-    await updateDoc(userRef, {
+    const updateData: any = {
       displayName: user.displayName || user.pseudo,
       photoURL: user.photoURL
-    });
+    };
+
+    // Generate friend code for existing users who don't have one yet
+    const existingData = userDoc.data();
+    if (!existingData.friendCode) {
+      const { friendsService } = await import('./friendsService');
+      const friendCode = await friendsService.generateUniqueFriendCode();
+      updateData.friendCode = friendCode;
+    }
+
+    await updateDoc(userRef, updateData);
   }
 }
 
@@ -67,6 +82,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     photoURL: data.photoURL,
     isAnonymous: data.isAnonymous,
     pseudo: data.isAnonymous ? data.displayName : undefined,
+    friendCode: data.friendCode,
     stat: data.stat,
     createdAt: data.createdAt?.toMillis() || Date.now(),
     updatedAt: data.updatedAt?.toMillis() || Date.now()

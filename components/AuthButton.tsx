@@ -1,14 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { User } from '../types';
 import { signOut } from '../services/authService';
+import { friendsService } from '../services/friendsService';
+import { Users } from 'lucide-react';
 
 interface AuthButtonProps {
   user: User | null;
   onSignInClick: () => void;
+  onFriendsClick?: () => void;
 }
 
-export function AuthButton({ user, onSignInClick }: AuthButtonProps) {
+export function AuthButton({ user, onSignInClick, onFriendsClick }: AuthButtonProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Subscribe to friend requests for notification badge
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = friendsService.subscribeToFriendRequests(
+      user.uid,
+      (requests) => setPendingCount(requests.length)
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   const handleSignOut = async () => {
     try {
@@ -65,6 +81,24 @@ export function AuthButton({ user, onSignInClick }: AuthButtonProps) {
                 {user.isAnonymous ? 'Compte anonyme' : user.email}
               </p>
             </div>
+            {onFriendsClick && (
+              <button
+                onClick={() => {
+                  onFriendsClick();
+                  setShowMenu(false);
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors flex items-center justify-between"
+              >
+                <span className="flex items-center">
+                  <Users className="w-4 h-4 mr-2" /> Friends
+                </span>
+                {pendingCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button
               onClick={handleSignOut}
               className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors text-red-600"

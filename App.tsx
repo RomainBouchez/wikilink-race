@@ -16,6 +16,7 @@ import { ModeSelection } from './components/ModeSelection';
 import { AuthButton } from './components/AuthButton';
 import { AuthModal } from './components/AuthModal';
 import { MigrationPrompt } from './components/MigrationPrompt';
+import { FriendsModal } from './components/FriendsModal';
 import { MultiplayerLobbyModal } from './components/MultiplayerLobbyModal';
 import { LobbyWaitingRoom } from './components/LobbyWaitingRoom';
 import { LobbyConfigPage } from './components/LobbyConfigPage';
@@ -45,6 +46,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
+  const [showFriendsModal, setShowFriendsModal] = useState(false);
 
   // Multiplayer state
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
@@ -158,6 +160,68 @@ function App() {
       dailyProgressService.saveProgress(gameState, user);
     }
   }, [gameState.clicks, gameState.currentPage?.title, user]);
+
+  // Auto-save score when game is won (except for multiplayer)
+  useEffect(() => {
+    const autoSaveScore = async () => {
+      // Only auto-save for non-multiplayer modes
+      if (gameState.status !== GameStatus.WON || gameState.mode === GameMode.MULTIPLAYER) {
+        return;
+      }
+
+      // Skip if already saved
+      if (lastSavedEntryId) {
+        return;
+      }
+
+      const timeTaken = gameState.startTime && gameState.endTime
+        ? Math.floor((gameState.endTime - gameState.startTime) / 1000)
+        : 0;
+
+      // Determine player name
+      let playerName: string;
+
+      if (user) {
+        // Authenticated user - use their display name or pseudo
+        playerName = user.displayName || user.pseudo || 'Joueur Anonyme';
+      } else {
+        // Guest mode - ask for name
+        const name = prompt('Entrez votre nom pour le leaderboard:');
+        if (!name || name.trim() === '') return;
+        playerName = name.trim();
+      }
+
+      try {
+        const entry = await leaderboardService.saveScore({
+          playerName,
+          clicks: gameState.clicks,
+          timeSeconds: timeTaken,
+          startPage: gameState.startPage!.title,
+          targetPage: gameState.targetPage!.title,
+          path: gameState.history,
+          mode: gameState.mode!,
+          dailyChallengeId: gameState.dailyChallengeId,
+        });
+
+        // Mark daily challenge as completed and clear progress
+        if (gameState.mode === GameMode.DAILY && gameState.dailyChallengeId) {
+          dailyChallengeService.markTodayCompleted();
+          await dailyProgressService.clearProgress(gameState.dailyChallengeId, user);
+        }
+
+        setLastSavedEntryId(entry.id);
+
+        // Show success message for authenticated users
+        if (user) {
+          console.log('Score sauvegardé automatiquement dans le cloud!');
+        }
+      } catch (error) {
+        console.error('Failed to auto-save score:', error);
+      }
+    };
+
+    autoSaveScore();
+  }, [gameState.status, gameState.mode, gameState.startTime, gameState.endTime, gameState.clicks, gameState.startPage, gameState.targetPage, gameState.history, gameState.dailyChallengeId, user, lastSavedEntryId]);
 
   // Subscribe to lobby updates
   useEffect(() => {
@@ -425,7 +489,11 @@ function App() {
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-6 font-sans">
           {/* Auth Button in top right */}
           <div className="fixed top-4 right-4 z-10">
-            <AuthButton user={user} onSignInClick={() => setShowAuthModal(true)} />
+            <AuthButton
+              user={user}
+              onSignInClick={() => setShowAuthModal(true)}
+              onFriendsClick={() => setShowFriendsModal(true)}
+            />
           </div>
 
           <div className="max-w-4xl w-full">
@@ -514,6 +582,18 @@ function App() {
             onClose={() => setShowLeaderboard(false)}
             highlightEntryId={lastSavedEntryId || undefined}
             user={user}
+          />
+        )}
+
+        {/* Friends Modal */}
+        {showFriendsModal && user && (
+          <FriendsModal
+            user={user}
+            onClose={() => setShowFriendsModal(false)}
+            onInviteToGame={(friendId) => {
+              console.log('Invite friend to game:', friendId);
+              // TODO: Implement multiplayer invitation
+            }}
           />
         )}
 
@@ -703,51 +783,6 @@ function App() {
         ? Math.floor((gameState.endTime - gameState.startTime) / 1000)
         : 0;
 
-      const handleSaveScore = async () => {
-        // Determine player name
-        let playerName: string;
-
-        if (user) {
-          // Authenticated user - use their display name or pseudo
-          playerName = user.displayName || user.pseudo || 'Joueur Anonyme';
-        } else {
-          // Guest mode - ask for name
-          const name = prompt('Entrez votre nom pour le leaderboard:');
-          if (!name || name.trim() === '') return;
-          playerName = name.trim();
-        }
-
-        try {
-          const entry = await leaderboardService.saveScore({
-            playerName,
-            clicks: gameState.clicks,
-            timeSeconds: timeTaken,
-            startPage: gameState.startPage!.title,
-            targetPage: gameState.targetPage!.title,
-            path: gameState.history,
-            mode: gameState.mode!,
-            dailyChallengeId: gameState.dailyChallengeId,
-          });
-
-          // Mark daily challenge as completed and clear progress
-          if (gameState.mode === GameMode.DAILY && gameState.dailyChallengeId) {
-            dailyChallengeService.markTodayCompleted();
-            await dailyProgressService.clearProgress(gameState.dailyChallengeId, user);
-          }
-
-          setLastSavedEntryId(entry.id);
-          setShowLeaderboard(true);
-
-          // Show success message for authenticated users
-          if (user) {
-            console.log('Score sauvegardé dans le cloud!');
-          }
-        } catch (error) {
-          console.error('Failed to save score:', error);
-          alert('Erreur lors de la sauvegarde du score. Veuillez réessayer.');
-        }
-      };
-
       return (
         <>
           <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -793,18 +828,17 @@ function App() {
                       </div>
 
                       <div className="flex flex-col sm:flex-row justify-center gap-3">
-                          <Button variant="secondary" onClick={handleSaveScore} className="flex items-center justify-center">
-                              <Trophy className="w-4 h-4 mr-2" /> Save to Leaderboard
-                          </Button>
                           <Button variant="secondary" onClick={() => setShowLeaderboard(true)} className="flex items-center justify-center">
                               View Leaderboard
                           </Button>
                           <Button variant="secondary" onClick={() => window.open(`https://twitter.com/intent/tweet?text=I%20reached%20${gameState.targetPage?.title}%20from%20${gameState.startPage?.title}%20in%20${gameState.clicks}%20clicks!%20#WikiLinkRaceyoooo`, '_blank')}>
                               Share Result
                           </Button>
-                          <Button onClick={() => initGame(gameState.mode!)} className="flex items-center justify-center">
-                              <RotateCcw className="w-4 h-4 mr-2" /> Play Again
-                          </Button>
+                          {gameState.mode !== GameMode.DAILY && (
+                            <Button onClick={() => initGame(gameState.mode!)} className="flex items-center justify-center">
+                                <RotateCcw className="w-4 h-4 mr-2" /> Play Again
+                            </Button>
+                          )}
                           <Button variant="secondary" onClick={goHome} className="flex items-center justify-center">
                               <Home className="w-4 h-4 mr-2" /> Home
                           </Button>

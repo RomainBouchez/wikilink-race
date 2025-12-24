@@ -95,6 +95,7 @@ export interface UserProfile {
   photoURL: string | null;
   isAnonymous: boolean;
   pseudo?: string;
+  friendCode: string; // Unique 6-character code for adding friends
   stat: UserStats; // Note: "stat" singular to match Firestore structure
   createdAt: number;
   updatedAt: number;
@@ -112,6 +113,41 @@ export interface UserStats {
 // Extended game entry with score calculation for Firestore
 export interface GameEntry extends LeaderboardEntry {
   score: number; // Calculated: clicks * 10 + timeSeconds
+}
+
+// Friends system types
+export enum FriendRequestStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted'
+}
+
+export interface FriendRequest {
+  friendId: string;
+  displayName: string;
+  photoURL: string | null;
+  friendCode: string;
+  status: FriendRequestStatus;
+  requestedBy: string; // uid of who sent the request
+  createdAt: number;
+  acceptedAt: number | null;
+}
+
+export interface Friend {
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+  friendCode: string;
+  friendsSince: number; // acceptedAt timestamp
+  stat?: UserStats; // Optional: fetched separately for profile view
+}
+
+export interface FriendSearchResult {
+  uid: string;
+  displayName: string;
+  photoURL: string | null;
+  friendCode: string;
+  isAlreadyFriend: boolean;
+  hasPendingRequest: boolean;
 }
 
 // Multiplayer types
