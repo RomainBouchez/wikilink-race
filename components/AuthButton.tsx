@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import type { User } from '../types';
 import { signOut } from '../services/authService';
 import { friendsService } from '../services/friendsService';
-import { Users } from 'lucide-react';
+import { Users, User as UserIcon } from 'lucide-react';
 
 interface AuthButtonProps {
   user: User | null;
   onSignInClick: () => void;
   onFriendsClick?: () => void;
+  onProfileClick?: () => void;
 }
 
-export function AuthButton({ user, onSignInClick, onFriendsClick }: AuthButtonProps) {
+export function AuthButton({ user, onSignInClick, onFriendsClick, onProfileClick }: AuthButtonProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -97,6 +98,17 @@ export function AuthButton({ user, onSignInClick, onFriendsClick }: AuthButtonPr
                     {pendingCount}
                   </span>
                 )}
+              </button>
+            )}
+            {onProfileClick && (
+              <button
+                onClick={() => {
+                  onProfileClick();
+                  setShowMenu(false);
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors flex items-center"
+              >
+                <UserIcon className="w-4 h-4 mr-2" /> Profile
               </button>
             )}
             <button

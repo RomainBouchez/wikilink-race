@@ -119,7 +119,6 @@ export const fetchPopularPage = async (): Promise<WikiPageSummary> => {
   } catch (error) {
     // Fallback: If the popular page doesn't exist or fetch fails,
     // try with a truly random page
-    console.warn(`Failed to fetch popular page "${title}", falling back to random`);
     return fetchRandomPage();
   }
 };
@@ -137,7 +136,6 @@ export const fetchHybridPage = async (): Promise<WikiPageSummary> => {
       return await fetchPopularPage();
     } catch (error) {
       // Fallback to random if popular page fetch fails
-      console.warn('Popular page fetch failed, falling back to random');
       return fetchRandomPage();
     }
   } else {
@@ -158,7 +156,7 @@ export const fetchGuaranteedPopularPage = async (): Promise<WikiPageSummary> => 
     try {
       return await fetchPopularPage();
     } catch (error) {
-      console.warn(`Attempt ${i + 1} to fetch popular page failed`);
+      // Retry on next iteration
     }
   }
 

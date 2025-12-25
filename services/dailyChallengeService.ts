@@ -56,7 +56,6 @@ class DailyChallengeService {
     // If after retries they're still the same (extremely unlikely),
     // use random as fallback
     if (start.title === finalTarget.title) {
-      console.warn('Unable to generate different pages, using random for target');
       finalTarget = await fetchRandomPage();
     }
 
@@ -75,17 +74,14 @@ class DailyChallengeService {
 
     // 1. Try Firestore first (global challenge for all players)
     try {
-      console.log('[DailyChallenge] Checking Firestore for today\'s challenge:', todayId);
       const firestoreChallenge = await firestoreService.getTodayChallenge();
       if (firestoreChallenge) {
-        console.log('[DailyChallenge] Found challenge in Firestore:', firestoreChallenge);
         // Cache locally for offline access
         this.saveChallengeLocally(firestoreChallenge);
         return firestoreChallenge;
       }
-      console.log('[DailyChallenge] No challenge found in Firestore, will generate new one');
     } catch (error) {
-      console.warn('Firestore unavailable, using local challenge:', error);
+      // Firestore unavailable, fall through to localStorage
     }
 
     // 2. Fallback to localStorage
@@ -104,24 +100,20 @@ class DailyChallengeService {
           challenges[todayId] = challenge;
           this.saveChallenges(challenges);
         } catch (e) {
-          console.warn('Failed to fetch page summaries for daily challenge:', e);
+          // Failed to fetch page summaries, use existing data
         }
       }
       return challenge;
     }
 
     // 3. Generate new challenge
-    console.log('[DailyChallenge] Generating new challenge for:', todayId);
     const newChallenge = await this.generateChallengeForDate(todayId);
-    console.log('[DailyChallenge] Generated challenge:', newChallenge);
 
     // 4. Try to save to Firestore (best effort, for global sync)
     try {
-      console.log('[DailyChallenge] Saving to Firestore...');
       await firestoreService.createDailyChallenge(newChallenge);
-      console.log('[DailyChallenge] Successfully saved to Firestore');
     } catch (error) {
-      console.warn('Could not save challenge to Firestore:', error);
+      // Could not save to Firestore, local copy will be used
     }
 
     // 5. Always save locally

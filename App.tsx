@@ -1,13 +1,14 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { GameStatus, GameState, WikiPageSummary, GameMode, User, LobbyState, LobbyStatus, PlayerStatus, ChallengeMode } from './types';
 import { fetchRandomPage, fetchPageSummary, fetchHybridPage, arePageTitlesEqual } from './services/wikiService';
 import { leaderboardService } from './services/leaderboardService';
 import { dailyChallengeService } from './services/dailyChallengeService';
 import { dailyProgressService } from './services/dailyProgressService';
+import { dailyStreaksService } from './services/dailyStreaksService';
 import { multiplayerService } from './services/multiplayerService';
 import { onAuthStateChanged, mapFirebaseUser } from './services/authService';
-import { createOrUpdateUserProfile } from './services/firestoreService';
-import { hasLocalData } from './services/migrationService';
+import { createOrUpdateUserProfile, saveAbandonedGame } from './services/firestoreService';
+import { hasLocalData, migrateLocalDataToFirestore, clearLocalDataAfterMigration } from './services/migrationService';
 import { WikiViewer } from './components/WikiViewer';
 import { GameSidebar } from './components/GameSidebar';
 import { Button } from './components/Button';
@@ -15,8 +16,8 @@ import { Leaderboard } from './components/Leaderboard';
 import { ModeSelection } from './components/ModeSelection';
 import { AuthButton } from './components/AuthButton';
 import { AuthModal } from './components/AuthModal';
-import { MigrationPrompt } from './components/MigrationPrompt';
 import { FriendsModal } from './components/FriendsModal';
+import { ProfilePage } from './components/ProfilePage';
 import { MultiplayerLobbyModal } from './components/MultiplayerLobbyModal';
 import { LobbyWaitingRoom } from './components/LobbyWaitingRoom';
 import { LobbyConfigPage } from './components/LobbyConfigPage';
@@ -45,14 +46,17 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [showProfilePage, setShowProfilePage] = useState(false);
 
   // Multiplayer state
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
   const [showLobbyModal, setShowLobbyModal] = useState(false);
   const [multiplayerAction, setMultiplayerAction] = useState<'create' | 'join' | null>(null);
   const [showLobbyConfigPage, setShowLobbyConfigPage] = useState(false);
+
+  // Ref to prevent saving abandoned game multiple times
+  const isSavingAbandoned = useRef(false);
 
   // Listen to authentication state changes
   useEffect(() => {
@@ -71,9 +75,23 @@ function App() {
         // Configure leaderboard service for Firestore mode
         leaderboardService.configure(true, firebaseUser.uid);
 
-        // Check if there's local data to migrate
+        // Auto-migrate local data if it exists
         if (hasLocalData()) {
-          setShowMigrationPrompt(true);
+          migrateLocalDataToFirestore(firebaseUser.uid)
+            .then(result => {
+              if (result.success) {
+                // Clear local data after successful migration to prevent duplicates
+                clearLocalDataAfterMigration();
+              } else {
+                // Even with errors, clear local data if some games were migrated
+                if (result.entriesMigrated > 0) {
+                  clearLocalDataAfterMigration();
+                }
+              }
+            })
+            .catch(error => {
+              console.error('Migration failed:', error);
+            });
         }
       } else {
         setUser(null);
@@ -85,6 +103,33 @@ function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // Save abandoned game when page is refreshed or closed
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Try to save abandoned game on page unload
+      // Note: Async operations may not complete reliably during unload
+      if (
+        gameState.status === GameStatus.PLAYING &&
+        gameState.mode === GameMode.TRAINING &&
+        user &&
+        gameState.clicks > 0 &&
+        gameState.startTime &&
+        gameState.startPage &&
+        gameState.currentPage &&
+        !gameState.savedAsAbandoned &&
+        !isSavingAbandoned.current
+      ) {
+        // Attempt to save (may not complete if page closes too quickly)
+        saveCurrentGameIfAbandoned().catch(err => {
+          console.error('Failed to save on unload:', err);
+        });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [gameState, user]);
 
   // Check for saved daily progress (but don't auto-restore)
   const [hasSavedDailyProgress, setHasSavedDailyProgress] = useState(false);
@@ -161,17 +206,24 @@ function App() {
     }
   }, [gameState.clicks, gameState.currentPage?.title, user]);
 
-  // Auto-save score when game is won (except for multiplayer)
+  // Auto-save score when game is won
   useEffect(() => {
     const autoSaveScore = async () => {
-      // Only auto-save for non-multiplayer modes
-      if (gameState.status !== GameStatus.WON || gameState.mode === GameMode.MULTIPLAYER) {
+      // Only auto-save when game is won
+      if (gameState.status !== GameStatus.WON) {
         return;
       }
 
       // Skip if already saved
       if (lastSavedEntryId) {
         return;
+      }
+
+      // For multiplayer: only save if current user is the winner
+      if (gameState.mode === GameMode.MULTIPLAYER && lobbyState) {
+        if (!user || lobbyState.winnerId !== user.uid) {
+          return;
+        }
       }
 
       const timeTaken = gameState.startTime && gameState.endTime
@@ -206,22 +258,28 @@ function App() {
         // Mark daily challenge as completed and clear progress
         if (gameState.mode === GameMode.DAILY && gameState.dailyChallengeId) {
           dailyChallengeService.markTodayCompleted();
+
+          // Record daily completion for streak tracking
+          if (user) {
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            await dailyStreaksService.recordDailyCompletion(
+              user.uid,
+              today,
+              gameState.dailyChallengeId
+            );
+          }
+
           await dailyProgressService.clearProgress(gameState.dailyChallengeId, user);
         }
 
         setLastSavedEntryId(entry.id);
-
-        // Show success message for authenticated users
-        if (user) {
-          console.log('Score sauvegardé automatiquement dans le cloud!');
-        }
       } catch (error) {
         console.error('Failed to auto-save score:', error);
       }
     };
 
     autoSaveScore();
-  }, [gameState.status, gameState.mode, gameState.startTime, gameState.endTime, gameState.clicks, gameState.startPage, gameState.targetPage, gameState.history, gameState.dailyChallengeId, user, lastSavedEntryId]);
+  }, [gameState.status, gameState.mode, gameState.startTime, gameState.endTime, gameState.clicks, gameState.startPage, gameState.targetPage, gameState.history, gameState.dailyChallengeId, user, lastSavedEntryId, lobbyState]);
 
   // Subscribe to lobby updates
   useEffect(() => {
@@ -297,7 +355,61 @@ function App() {
     });
   };
 
+  /**
+   * Save current game if it's in progress and abandoned
+   * Only for training mode
+   */
+  const saveCurrentGameIfAbandoned = async () => {
+    // Prevent multiple simultaneous saves
+    if (isSavingAbandoned.current) {
+      return;
+    }
+
+    // Only save if:
+    // 1. Game is currently playing
+    // 2. In training mode
+    // 3. User is authenticated
+    // 4. Has made at least one click
+    // 5. Not already saved as abandoned
+    if (
+      gameState.status === GameStatus.PLAYING &&
+      gameState.mode === GameMode.TRAINING &&
+      user &&
+      gameState.clicks > 0 &&
+      gameState.startTime &&
+      gameState.startPage &&
+      gameState.currentPage &&
+      !gameState.savedAsAbandoned
+    ) {
+      try {
+        isSavingAbandoned.current = true; // Lock
+
+        await saveAbandonedGame(
+          user.uid,
+          user.displayName || user.pseudo || 'Anonymous',
+          {
+            mode: gameState.mode,
+            startPage: gameState.startPage.title,
+            currentPage: gameState.currentPage.title,
+            history: gameState.history,
+            clicks: gameState.clicks,
+            startTime: gameState.startTime,
+          }
+        );
+
+        // Mark as saved to prevent duplicate saves
+        setGameState(prev => ({ ...prev, savedAsAbandoned: true }));
+      } catch (error) {
+        console.error('Failed to save abandoned game:', error);
+      } finally {
+        isSavingAbandoned.current = false; // Unlock
+      }
+    }
+  };
+
   const initGame = async (mode: GameMode, action?: 'create' | 'join') => {
+    // Save current game if being abandoned
+    await saveCurrentGameIfAbandoned();
     // Handle multiplayer mode
     if (mode === GameMode.MULTIPLAYER && action) {
       setMultiplayerAction(action);
@@ -390,7 +502,6 @@ function App() {
          pageSummary = await fetchPageSummary(title);
     } catch (e) {
         // If summary fetch fails, we just use the title, not a game breaker
-        console.warn("Could not fetch summary for", title);
     }
 
     // Check Win Condition
@@ -451,7 +562,7 @@ function App() {
     try {
          pageSummary = await fetchPageSummary(title);
     } catch (e) {
-        console.warn("Could not fetch summary for", title);
+        // If summary fetch fails, we just use the title
     }
 
     // Navigate back to this point in history by truncating the history array
@@ -472,17 +583,7 @@ function App() {
         {showAuthModal && (
           <AuthModal
             onClose={() => setShowAuthModal(false)}
-            onSuccess={() => {
-              console.log('Authentication successful!');
-            }}
-          />
-        )}
-
-        {/* Migration Prompt */}
-        {showMigrationPrompt && user && (
-          <MigrationPrompt
-            userId={user.uid}
-            onClose={() => setShowMigrationPrompt(false)}
+            onSuccess={() => setShowAuthModal(false)}
           />
         )}
 
@@ -493,6 +594,7 @@ function App() {
               user={user}
               onSignInClick={() => setShowAuthModal(true)}
               onFriendsClick={() => setShowFriendsModal(true)}
+              onProfileClick={() => setShowProfilePage(true)}
             />
           </div>
 
@@ -591,9 +693,16 @@ function App() {
             user={user}
             onClose={() => setShowFriendsModal(false)}
             onInviteToGame={(friendId) => {
-              console.log('Invite friend to game:', friendId);
               // TODO: Implement multiplayer invitation
             }}
+          />
+        )}
+
+        {/* Profile Page */}
+        {showProfilePage && user && (
+          <ProfilePage
+            user={user}
+            onClose={() => setShowProfilePage(false)}
           />
         )}
 

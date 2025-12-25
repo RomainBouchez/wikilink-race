@@ -197,7 +197,6 @@ class DailyProgressService {
 
     // Validate that progress is for the correct challenge
     if (progress && progress.dailyChallengeId !== challengeId) {
-      console.warn('[DailyProgress] Progress is for a different challenge, ignoring');
       return null;
     }
 

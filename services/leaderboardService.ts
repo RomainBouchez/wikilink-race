@@ -150,7 +150,6 @@ class LeaderboardService {
    */
   async getUserGames(userId: string, limit: number = 50): Promise<GameEntry[]> {
     if (!this.config.useFirestore) {
-      console.warn('getUserGames is only available in Firestore mode');
       return [];
     }
     return await firestoreService.getUserGames(userId, limit);
@@ -181,8 +180,6 @@ class LeaderboardService {
   clearLeaderboard(): void {
     if (!this.config.useFirestore) {
       localStorage.removeItem(STORAGE_KEY);
-    } else {
-      console.warn('Cannot clear Firestore leaderboard from client');
     }
   }
 

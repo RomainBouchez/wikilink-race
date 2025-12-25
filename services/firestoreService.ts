@@ -107,7 +107,8 @@ export async function saveGame(userId: string, game: Omit<GameEntry, 'id'>): Pro
     path: game.path,
     mode: game.mode,
     timestamp: Timestamp.fromMillis(game.timestamp),
-    score: game.score
+    score: game.score,
+    completed: true // Mark as completed successfully
   };
 
   // Only add dailyChallengeId if it's defined
@@ -125,6 +126,48 @@ export async function saveGame(userId: string, game: Omit<GameEntry, 'id'>): Pro
 }
 
 /**
+ * Save an abandoned game to Firestore
+ * Does NOT update user statistics or leaderboard
+ * Only for training mode
+ */
+export async function saveAbandonedGame(
+  userId: string,
+  playerName: string,
+  gameState: {
+    mode: GameMode;
+    startPage: string;
+    currentPage: string;
+    history: string[];
+    clicks: number;
+    startTime: number;
+  }
+): Promise<string> {
+  const gamesRef = collection(db, 'games');
+
+  const timeSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
+  const score = gameState.clicks * 10 + timeSeconds;
+
+  const gameData = {
+    userId,
+    playerName,
+    clicks: gameState.clicks,
+    timeSeconds,
+    startPage: gameState.startPage,
+    targetPage: '', // No target reached
+    path: gameState.history,
+    mode: gameState.mode,
+    timestamp: Timestamp.now(),
+    score,
+    completed: false // Mark as abandoned
+  };
+
+  // Add game to collection (for personal stats/graph only, not leaderboard)
+  const gameDoc = await addDoc(gamesRef, gameData);
+
+  return gameDoc.id;
+}
+
+/**
  * Update user statistics after a game
  */
 async function updateUserStats(userId: string, game: GameEntry | Omit<GameEntry, 'id'>): Promise<void> {
@@ -132,7 +175,6 @@ async function updateUserStats(userId: string, game: GameEntry | Omit<GameEntry,
   const userDoc = await getDoc(userRef);
 
   if (!userDoc.exists()) {
-    console.warn('User profile does not exist, cannot update stats');
     return;
   }
 
@@ -155,6 +197,7 @@ async function updateUserStats(userId: string, game: GameEntry | Omit<GameEntry,
 /**
  * Get global leaderboard
  * Returns top games sorted by score (ascending)
+ * Only includes completed games (completed: true or completed field not present for backward compatibility)
  */
 export async function getGlobalLeaderboard(
   mode?: GameMode,
@@ -168,18 +211,18 @@ export async function getGlobalLeaderboard(
       gamesRef,
       where('mode', '==', mode),
       orderBy('score', 'asc'),
-      limit(limitCount)
+      limit(limitCount * 2) // Fetch more to account for filtering
     );
   } else {
     q = query(
       gamesRef,
       orderBy('score', 'asc'),
-      limit(limitCount)
+      limit(limitCount * 2) // Fetch more to account for filtering
     );
   }
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => {
+  const allGames = snapshot.docs.map(doc => {
     const data = doc.data();
     return {
       id: doc.id,
@@ -193,9 +236,17 @@ export async function getGlobalLeaderboard(
       mode: data.mode,
       dailyChallengeId: data.dailyChallengeId,
       timestamp: data.timestamp.toMillis(),
-      score: data.score
+      score: data.score,
+      completed: data.completed as boolean | undefined
     };
   });
+
+  // Filter out abandoned games (completed: false)
+  // Keep games with completed: true OR completed: undefined (backward compatibility)
+  const completedGames = allGames.filter(game => game.completed !== false);
+
+  // Return only the requested number
+  return completedGames.slice(0, limitCount);
 }
 
 /**
@@ -243,7 +294,8 @@ export async function getUserGames(userId: string, limitCount: number = 50): Pro
       mode: data.mode,
       dailyChallengeId: data.dailyChallengeId,
       timestamp: data.timestamp.toMillis(),
-      score: data.score
+      score: data.score,
+      completed: data.completed as boolean | undefined
     };
   });
 }

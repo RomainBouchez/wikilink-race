@@ -379,7 +379,6 @@ class FriendsService {
   async inviteToMultiplayer(lobbyCode: string, friendId: string): Promise<void> {
     // Future: Could create a notifications subcollection
     // For now, user can copy lobby code and share manually
-    console.log(`Inviting friend ${friendId} to lobby ${lobbyCode}`);
     // TODO: Implement notification system
   }
 }

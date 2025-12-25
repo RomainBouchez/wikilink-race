@@ -23,9 +23,5 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 
 // Enable Firestore offline persistence
 enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('Persistance désactivée : plusieurs onglets ouverts');
-  } else if (err.code === 'unimplemented') {
-    console.warn('Persistance non supportée par ce navigateur');
-  }
+  // Silently handle persistence errors (multiple tabs or unsupported browser)
 });

@@ -78,10 +78,11 @@ export async function migrateLocalDataToFirestore(userId: string): Promise<Migra
 }
 
 /**
- * Clear local data after successful migration (optional, use with caution)
- * It's recommended to keep local data as backup
+ * Clear local data after successful migration
+ * Directly removes localStorage data to prevent duplicate imports
  */
 export function clearLocalDataAfterMigration(): void {
-  console.warn('Clearing local leaderboard data after migration');
-  leaderboardService.clearLeaderboard();
+  // Direct localStorage removal (bypassing leaderboardService which checks useFirestore flag)
+  const STORAGE_KEY = 'wikilink_race_leaderboard';
+  localStorage.removeItem(STORAGE_KEY);
 }

@@ -37,6 +37,7 @@ export interface GameState {
   error: string | null;
   dailyChallengeId?: string; // For daily mode
   lobbyCode?: string; // For multiplayer mode
+  savedAsAbandoned?: boolean; // Flag to prevent saving the same abandoned game multiple times
 }
 
 export interface HistoryItem {
@@ -56,6 +57,7 @@ export interface LeaderboardEntry {
   timestamp: number;
   mode: GameMode;
   dailyChallengeId?: string;
+  completed?: boolean; // true if game was completed, false if abandoned
 }
 
 export interface DailyChallenge {
@@ -108,6 +110,40 @@ export interface UserStats {
   totalClicks?: number;
   averageClicks?: number;
   bestScore?: number;
+}
+
+// Daily Streak System
+export interface DailyStreak {
+  currentStreak: number;
+  bestStreak: number;
+  lastCompletionDate: string; // YYYY-MM-DD
+  completionDates: string[];
+}
+
+// Enhanced Stats
+export interface EnhancedUserStats extends UserStats {
+  gamesThisMonth: number;
+  gamesThisWeek: number;
+  favoriteGameMode: GameMode | null;
+  dailyStreak: DailyStreak;
+}
+
+// Graph Data
+export interface GraphNode {
+  id: string; // Page title
+  label: string;
+  visits: number; // Taille du nœud
+}
+
+export interface GraphLink {
+  source: string; // De la page
+  target: string; // Vers la page
+  value: number; // Nombre de transitions
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
 }
 
 // Extended game entry with score calculation for Firestore

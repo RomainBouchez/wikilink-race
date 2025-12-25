@@ -69,14 +69,11 @@ export const WikiViewer: React.FC<WikiViewerProps> = ({ title, onNavigate }) => 
 
       // Ignore internal anchors (#section), file links (File:), or special pages (Special:)
       if (
-        nextTitle && 
-        !nextTitle.startsWith('#') && 
+        nextTitle &&
+        !nextTitle.startsWith('#') &&
         !nextTitle.includes(':') // Crude way to filter Namespaces like File:, Help:, etc.
       ) {
         onNavigate(nextTitle);
-      } else {
-        // Optional: User feedback for unclickable links (e.g., citations or external)
-        console.log("Ignored link:", href);
       }
     }
   };

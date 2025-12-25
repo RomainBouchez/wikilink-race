@@ -545,7 +545,6 @@ class MultiplayerService {
   async cleanupOldLobbies(): Promise<void> {
     // This would require a Cloud Function or admin SDK
     // For now, lobbies will be cleaned up manually or via Firebase TTL policies
-    console.log('Cleanup old lobbies - requires Cloud Function implementation');
   }
 }
 
