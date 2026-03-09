@@ -135,18 +135,26 @@ class DailyChallengeService {
    * Check if user has already completed today's challenge
    */
   hasCompletedToday(): boolean {
-    const todayId = this.getTodayId();
-    const completionKey = `daily-completed-${todayId}`;
-    return localStorage.getItem(completionKey) === 'true';
+    try {
+      const todayId = this.getTodayId();
+      const completionKey = `daily-completed-${todayId}`;
+      return localStorage.getItem(completionKey) === 'true';
+    } catch {
+      return false;
+    }
   }
 
   /**
    * Mark today's challenge as completed
    */
   markTodayCompleted(): void {
-    const todayId = this.getTodayId();
-    const completionKey = `daily-completed-${todayId}`;
-    localStorage.setItem(completionKey, 'true');
+    try {
+      const todayId = this.getTodayId();
+      const completionKey = `daily-completed-${todayId}`;
+      localStorage.setItem(completionKey, 'true');
+    } catch {
+      // localStorage blocked, silently ignore
+    }
   }
 
   /**

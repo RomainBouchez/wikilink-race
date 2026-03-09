@@ -23,6 +23,7 @@ import { LobbyWaitingRoom } from './components/LobbyWaitingRoom';
 import { LobbyConfigPage } from './components/LobbyConfigPage';
 import { MultiplayerRoundEnd } from './components/MultiplayerRoundEnd';
 import { MultiplayerFinalRecap } from './components/MultiplayerFinalRecap';
+import { ShareDiscordButton } from './components/ShareDiscordButton';
 import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search, Map, ChevronRight, Home } from 'lucide-react';
 const INITIAL_STATE: GameState = {
   status: GameStatus.IDLE,
@@ -891,6 +892,7 @@ function App() {
       const timeTaken = gameState.startTime && gameState.endTime
         ? Math.floor((gameState.endTime - gameState.startTime) / 1000)
         : 0;
+      const playerName = user?.displayName || user?.pseudo || 'Anonyme';
 
       return (
         <>
@@ -943,6 +945,17 @@ function App() {
                           <Button variant="secondary" onClick={() => window.open(`https://twitter.com/intent/tweet?text=I%20reached%20${gameState.targetPage?.title}%20from%20${gameState.startPage?.title}%20in%20${gameState.clicks}%20clicks!%20#WikiLinkRaceyoooo`, '_blank')}>
                               Share Result
                           </Button>
+                          {gameState.mode === GameMode.DAILY && (
+                            <ShareDiscordButton
+                              playerName={playerName}
+                              startPage={gameState.startPage?.title ?? ''}
+                              targetPage={gameState.targetPage?.title ?? ''}
+                              timeSeconds={timeTaken}
+                              clicks={gameState.clicks}
+                              mode="DAILY"
+                              userId={user?.uid}
+                            />
+                          )}
                           {gameState.mode !== GameMode.DAILY && (
                             <Button onClick={() => initGame(gameState.mode!)} className="flex items-center justify-center">
                                 <RotateCcw className="w-4 h-4 mr-2" /> Play Again
