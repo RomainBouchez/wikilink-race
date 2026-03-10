@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
 import { sendDiscordShare } from '../services/discordWebhook';
+import { getDiscordAllowedUids } from '../services/adminService';
 
 interface ShareDiscordButtonProps {
   playerName: string;
@@ -26,6 +27,8 @@ const DiscordIcon: React.FC = () => (
   </svg>
 );
 
+const webhookUrl = import.meta.env.VITE_DISCORD_WEBHOOK_URL as string | undefined;
+
 export const ShareDiscordButton: React.FC<ShareDiscordButtonProps> = ({
   playerName,
   startPage,
@@ -36,15 +39,19 @@ export const ShareDiscordButton: React.FC<ShareDiscordButtonProps> = ({
   userId,
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
+  const [allowed, setAllowed] = useState<boolean | null>(null); // null = loading
   const lastSentAt = useRef<number>(0);
   const COOLDOWN_MS = 300000;
 
-  const webhookUrl = import.meta.env.VITE_DISCORD_WEBHOOK_URL as string | undefined;
-  if (!webhookUrl) return null;
+  useEffect(() => {
+    if (!webhookUrl) { setAllowed(false); return; }
+    getDiscordAllowedUids().then(uids => {
+      if (uids.length === 0) { setAllowed(true); return; }
+      setAllowed(!!userId && uids.includes(userId));
+    }).catch(() => setAllowed(false));
+  }, [userId]);
 
-  const allowedUids = (import.meta.env.VITE_DISCORD_ALLOWED_UIDS as string | undefined)
-    ?.split(',').map(u => u.trim()).filter(Boolean);
-  if (allowedUids && allowedUids.length > 0 && (!userId || !allowedUids.includes(userId))) return null;
+  if (!webhookUrl || allowed === null || !allowed) return null;
 
   const handleClick = async () => {
     if (state !== 'idle') return;

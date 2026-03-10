@@ -45,10 +45,11 @@ export async function createOrUpdateUserProfile(user: User): Promise<void> {
       }
     });
   } else {
-    // Update existing profile (displayName and photoURL might have changed)
+    // Update existing profile (displayName, photoURL and email might have changed)
     const updateData: any = {
       displayName: user.displayName || user.pseudo,
-      photoURL: user.photoURL
+      photoURL: user.photoURL,
+      email: user.email ?? null
     };
 
     // Generate friend code for existing users who don't have one yet

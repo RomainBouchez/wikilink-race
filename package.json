@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "generate-daily": "tsx scripts/generateDailyChallenge.ts"
+    "generate-daily": "npx tsx scripts/createTodayChallenge.ts"
   },
   "dependencies": {
     "firebase": "^12.7.0",

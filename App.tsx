@@ -24,7 +24,11 @@ import { LobbyConfigPage } from './components/LobbyConfigPage';
 import { MultiplayerRoundEnd } from './components/MultiplayerRoundEnd';
 import { MultiplayerFinalRecap } from './components/MultiplayerFinalRecap';
 import { ShareDiscordButton } from './components/ShareDiscordButton';
-import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search, Map, ChevronRight, Home } from 'lucide-react';
+import { AdminPage } from './components/AdminPage';
+import { Trophy, ArrowRight, BookOpen, RotateCcw, Globe, Search, Map, ChevronRight, Home, Shield } from 'lucide-react';
+
+const ADMIN_UIDS = (import.meta.env.VITE_ADMIN_UIDS as string | undefined)
+  ?.split(',').map((u: string) => u.trim()).filter(Boolean) ?? [];
 const INITIAL_STATE: GameState = {
   status: GameStatus.IDLE,
   mode: null,
@@ -49,6 +53,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showProfilePage, setShowProfilePage] = useState(false);
+  const [showAdminPage, setShowAdminPage] = useState(false);
 
   // Multiplayer state
   const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
@@ -588,9 +593,23 @@ function App() {
           />
         )}
 
+        {/* Admin Page */}
+        {showAdminPage && (
+          <AdminPage onClose={() => setShowAdminPage(false)} />
+        )}
+
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-6 font-sans">
           {/* Auth Button in top right */}
-          <div className="fixed top-4 right-4 z-10">
+          <div className="fixed top-4 right-4 z-10 flex items-center gap-2">
+            {user && ADMIN_UIDS.includes(user.uid) && (
+              <button
+                onClick={() => setShowAdminPage(true)}
+                title="Administration"
+                className="bg-white hover:bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-lg p-2 shadow-sm transition-colors"
+              >
+                <Shield className="w-5 h-5" />
+              </button>
+            )}
             <AuthButton
               user={user}
               onSignInClick={() => setShowAuthModal(true)}

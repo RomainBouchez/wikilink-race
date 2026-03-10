@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  wikilink-race:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID}
+        VITE_FIREBASE_DATABASE_URL: ${VITE_FIREBASE_DATABASE_URL}
+        VITE_FIREBASE_MEASUREMENT_ID: ${VITE_FIREBASE_MEASUREMENT_ID}
+        VITE_DISCORD_WEBHOOK_URL: ${VITE_DISCORD_WEBHOOK_URL}
+        VITE_DISCORD_ALLOWED_UIDS: ${VITE_DISCORD_ALLOWED_UIDS}
+        VITE_ADMIN_UIDS: ${VITE_ADMIN_UIDS}
+    image: wikilink-race:latest
+    container_name: wikilink-race
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - wikilink-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  wikilink-network:
+    driver: bridge
